@@ -1,6 +1,7 @@
 # Admin Dashboard System Technical Specification
 
 This document provides an exhaustive technical specification for the Admin Dashboard System, covering architecture, features, data flow, API integrations, and future migration plans.
+This is for a dental clinic.
 
 ## 1. Complete Feature Documentation
 

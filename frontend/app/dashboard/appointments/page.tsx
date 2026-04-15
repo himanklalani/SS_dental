@@ -161,7 +161,7 @@ export default function AppointmentsPage() {
                 status: 'Completed' 
             });
             
-            const hasRecentVisit = prevAppts.some((a: any) => 
+            const hasRecentVisit = (prevAppts.data || []).some((a: any) => 
                 a._id !== appt._id && new Date(a.appointment_date) >= nineMonthsAgo
             );
             

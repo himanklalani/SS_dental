@@ -64,7 +64,7 @@ const Sidebar = () => {
             <div className="w-8 h-8 bg-neutral-900 dark:bg-white rounded flex items-center justify-center">
               <Box size={20} className="text-white dark:text-black" />
             </div>
-            <span className="font-bold text-sm text-neutral-900 dark:text-white tracking-widest uppercase">Clinic's CRM</span>
+            <span className="font-bold text-sm text-neutral-900 dark:text-white tracking-widest uppercase">Clinic CRM</span>
           </div>
 
           {/* Nav Items */}

@@ -274,6 +274,16 @@ export const createPublicBooking = async (req: Request, res: Response) => {
         // ── 2. Validate Business and API Key ─────────────────────────────────────
         const business = await Business.findOne({ _id: business_id, api_key });
         if (!business) {
+            console.error(`[AUTH FAILED] Could not find Business with ID: '${business_id}' and API_KEY: '${api_key}'`);
+            
+            // Check if business exists at all to help debug
+            const businessExists = await Business.findById(business_id);
+            if (businessExists) {
+                console.error(`[AUTH DEBUG] Business found, but API key didn't match. DB Key: '${businessExists.api_key}'`);
+            } else {
+                console.error(`[AUTH DEBUG] Business ID not found in database at all.`);
+            }
+
             return res.status(401).json({ error: 'Unauthorized: Invalid Business ID or API Key' });
         }
 

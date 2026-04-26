@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: '/api', // Use relative path for proxy
+  baseURL: process.env.NEXT_PUBLIC_BACKEND_URL || '/api',
   headers: {
     'Content-Type': 'application/json',
   },

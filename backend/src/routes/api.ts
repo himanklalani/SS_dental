@@ -4,6 +4,7 @@ import { getPatients, createPatient, updatePatient, getPatient, deletePatient } 
 import { getAppointments, createAppointment, updateAppointment, deleteAppointment, createPublicBooking } from '../controllers/appointmentController';
 import Doctor from '../models/Doctor';
 import mongoose from 'mongoose';
+import rateLimit from 'express-rate-limit';
 
 const router = express.Router();
 
@@ -47,8 +48,17 @@ router.post('/appointments', createAppointment);
 router.put('/appointments/:id', updateAppointment);
 router.delete('/appointments/:id', deleteAppointment);
 
+// Public Booking Limiter: Max 5 requests per hour
+const publicBookingLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000, // 1 hour
+    max: 5, // limit each IP to 5 requests per windowMs
+    message: { error: 'Too many booking requests from this IP, please try again after an hour' },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
 // Public Booking
-router.post('/public/book', createPublicBooking);
+router.post('/public/book', publicBookingLimiter, createPublicBooking);
 
 // CRM - Doctors (Simple CRUD for now)
 router.get('/doctors', async (req, res) => {

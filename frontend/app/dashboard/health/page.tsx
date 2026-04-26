@@ -41,7 +41,8 @@ export default function HealthcheckPage() {
     return 'text-red-500 bg-red-500/10 border-red-500/20';
   };
 
-  const getStatusLabel = (status: string) => {
+  const getStatusLabel = (status: string | undefined) => {
+    if (!status) return 'UNKNOWN';
     if (status === 'missing_config') return 'MISSING CONFIG';
     return status.toUpperCase();
   };

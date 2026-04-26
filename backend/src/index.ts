@@ -19,7 +19,8 @@ const allowedOrigins = [
   'http://localhost:3000', // Local frontend
   'https://srs-website-tan.vercel.app', // Public Website (Vercel)
   'https://srsdentalcare.in', // Public Website (Custom Domain)
-  process.env.FRONTEND_URL // Dashboard URL (if set in env)
+  'https://review-booking-system.vercel.app', // Dashboard URL
+  process.env.FRONTEND_URL // Fallback URL (if set in env)
 ].filter(Boolean);
 
 app.use(cors({

@@ -11,7 +11,7 @@ export default function SettingsPage() {
   const [business, setBusiness] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [businessId] = useState('65f1a2b3c4d5e6f7a8b9c0d1');
+  const [businessId] = useState(process.env.NEXT_PUBLIC_BUSINESS_ID || '65f1a2b3c4d5e6f7a8b9c0d1');
 
   useEffect(() => {
     const fetchBusiness = async () => {

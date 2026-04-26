@@ -26,7 +26,7 @@ export default function AppointmentsPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [page, setPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
-    const [businessId] = useState('65f1a2b3c4d5e6f7a8b9c0d1');
+    const [businessId] = useState(process.env.NEXT_PUBLIC_BUSINESS_ID || '65f1a2b3c4d5e6f7a8b9c0d1');
 
     const [showCompletionModal, setShowCompletionModal] = useState(false);
     const [selectedAppointment, setSelectedAppointment] = useState<any>(null);

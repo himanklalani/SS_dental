@@ -14,7 +14,7 @@ export default function PatientsPage() {
     const [showAddModal, setShowAddModal] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
-    const [businessId] = useState('65f1a2b3c4d5e6f7a8b9c0d1');
+    const [businessId] = useState(process.env.NEXT_PUBLIC_BUSINESS_ID || '65f1a2b3c4d5e6f7a8b9c0d1');
 
     const [formData, setFormData] = useState({
         name: '', phone: '', email: '', date_of_birth: '', gender: '',

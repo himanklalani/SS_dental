@@ -1,5 +1,5 @@
 import express from 'express';
-import { triggerReview, getAnalytics, webhook, verifyWebhook, scheduleReview, getBusiness, updateBusiness, trackReviewClick } from '../controllers/reviewController';
+import { triggerReview, getAnalytics, webhook, verifyWebhook, scheduleReview, getBusiness, updateBusiness, trackReviewClick, sendDirectMessage } from '../controllers/reviewController';
 import { getPatients, createPatient, updatePatient, getPatient, deletePatient } from '../controllers/patientController';
 import { getAppointments, createAppointment, updateAppointment, deleteAppointment, createPublicBooking } from '../controllers/appointmentController';
 import Doctor from '../models/Doctor';
@@ -10,6 +10,7 @@ const router = express.Router();
 router.get('/r/:appointmentId', trackReviewClick);
 
 // Reviews & Business
+router.post('/send-direct', sendDirectMessage);
 router.post('/trigger-review', triggerReview);
 router.post('/schedule', scheduleReview);
 router.get('/analytics', getAnalytics);

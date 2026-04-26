@@ -9,25 +9,34 @@ const scheduledReminders = new Map<string, ScheduledTask>();
 // Map to store scheduled review followups: appointmentId -> reviewFollowUpTask
 const scheduledReviewFollowUps = new Map<string, ScheduledTask>();
 
-export const scheduleReminders = async (appointmentId: string, appointmentDate: Date) => {
+export const scheduleReminders = async (appointmentId: string, appointmentDate: Date, isFollowUp: boolean = false) => {
     // Cancel existing reminder jobs if any
     cancelReminders(appointmentId);
 
-    const now = new Date();
-    const timeDiffHours = (appointmentDate.getTime() - now.getTime()) / (1000 * 60 * 60);
+    const appointment = await Appointment.findById(appointmentId);
+    if (!appointment) return;
 
-    // If appointment is less than 3 hours away, skip scheduling the reminder
-    if (timeDiffHours < 3) {
+    const now = new Date();
+    const createdAt = appointment.createdAt || new Date();
+    
+    // Check gap between appointment time and when it was booked
+    const bookGapHours = (appointmentDate.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
+
+    // Skip reminder if booked less than 4 hours prior to the appointment
+    if (bookGapHours < 4) {
+        console.log(`[Cron] Skipped reminder scheduling for ${appointmentId}: Booked within 4 hours of appointment`);
         return;
     }
 
-    // Schedule 2h Reminder
-    const reminderDate = new Date(appointmentDate.getTime() - (2 * 60 * 60 * 1000));
+    // Determine reminder offset based on appointment type
+    const offsetHours = isFollowUp ? 3 : 2;
+    const reminderDate = new Date(appointmentDate.getTime() - (offsetHours * 60 * 60 * 1000));
+
     if (reminderDate > now) {
         const cronTime = `${reminderDate.getMinutes()} ${reminderDate.getHours()} ${reminderDate.getDate()} ${reminderDate.getMonth() + 1} *`;
-        const job = cron.schedule(cronTime, () => processReminder(appointmentId));
+        const job = cron.schedule(cronTime, () => processReminder(appointmentId, isFollowUp));
         scheduledReminders.set(appointmentId, job);
-        console.log(`[Cron] Scheduled 2h reminder for ${appointmentId} at ${reminderDate}`);
+        console.log(`[Cron] Scheduled ${offsetHours}h reminder for ${appointmentId} at ${reminderDate}`);
     }
 };
 
@@ -38,14 +47,12 @@ export const cancelReminders = (appointmentId: string) => {
         scheduledReminders.delete(appointmentId);
         console.log(`[Cron] Cancelled reminder for ${appointmentId}`);
     }
-    // Also cancel any pending review follow-ups if rescheduled before completion
     cancelReviewFollowUp(appointmentId);
 };
 
 export const scheduleReviewFollowUp = (appointmentId: string) => {
     cancelReviewFollowUp(appointmentId);
 
-    // Schedule for 24 hours from now
     const followupDate = new Date(Date.now() + (24 * 60 * 60 * 1000));
     const cronTime = `${followupDate.getMinutes()} ${followupDate.getHours()} ${followupDate.getDate()} ${followupDate.getMonth() + 1} *`;
     
@@ -62,7 +69,7 @@ export const cancelReviewFollowUp = (appointmentId: string) => {
     }
 };
 
-async function processReminder(appointmentId: string) {
+async function processReminder(appointmentId: string, isFollowUp: boolean = false) {
     try {
         const appointment = await Appointment.findById(appointmentId)
             .populate('patient_id')
@@ -82,14 +89,16 @@ async function processReminder(appointmentId: string) {
 
         const timeStr = new Date(appointment.appointment_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         
-        console.log(`[Cron] Sending 2h reminder to ${patient.phone}`);
+        console.log(`[Cron] Sending ${isFollowUp ? '3h follow-up' : '2h'} reminder to ${patient.phone}`);
         await sendWhatsAppMessage(
             patient.phone, 
             patient.name, 
             appointment.service_type, 
             business._id, 
             undefined, 
-            'appointment_reminder'
+            isFollowUp ? 'follow_up_reminder' : 'appointment_reminder',
+            undefined,
+            [patient.name, appointment.service_type, timeStr]
         );
 
         scheduledReminders.delete(appointmentId);
@@ -122,7 +131,8 @@ async function processReviewFollowUp(appointmentId: string) {
             business._id, 
             undefined, 
             'review_follow_up',
-            appointmentId
+            appointmentId,
+            [patient.name, appointment.service_type]
         );
 
         scheduledReviewFollowUps.delete(appointmentId);

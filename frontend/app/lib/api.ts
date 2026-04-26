@@ -17,6 +17,11 @@ export const triggerReview = async (data: any) => {
   return response.data;
 };
 
+export const sendDirectMessage = async (data: any) => {
+  const response = await api.post('/send-direct', data);
+  return response.data;
+};
+
 export const scheduleReview = async (data: any) => {
     const response = await api.post('/schedule', data);
     return response.data;

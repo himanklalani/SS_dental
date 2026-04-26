@@ -117,13 +117,18 @@ export const createAppointment = async (req: Request, res: Response) => {
 
             if (patient && doctor && business) {
                 try {
+                    const tDate = new Date(appointment.appointment_date).toLocaleDateString();
+                    const tTime = new Date(appointment.appointment_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    
                     await sendWhatsAppMessage(
                         patient.phone, 
                         patient.name, 
                         appointment.service_type, 
                         business._id, 
                         undefined, 
-                        'booking_confirmation'
+                        'booking_confirmation',
+                        undefined,
+                        [patient.name, tDate, tTime, appointment.service_type]
                     );
                 } catch (msgError) {
                     console.error(`[CRM] Failed to send booking confirmation:`, msgError);
@@ -178,12 +183,26 @@ export const updateAppointment = async (req: Request, res: Response) => {
 
         if (req.body.status === 'Cancelled' && oldAppointment.status !== 'Cancelled') {
             await cancelReminders(id);
+            const patient = await Patient.findById(oldAppointment.patient_id);
+            if (patient && patient.phone && business) {
+                try {
+                    await sendWhatsAppMessage(patient.phone, patient.name, oldAppointment.service_type, business._id, undefined, 'appointment_cancelled', undefined, [patient.name, oldAppointment.service_type]);
+                } catch (err) { console.error('Failed to send cancel message', err); }
+            }
         }
 
         if (newDate && newDate.getTime() !== oldAppointment.appointment_date?.getTime()) {
              // Rescheduled logic: reset reminders
              if (['Booked', 'Confirmed'].includes(updatedAppointment.status)) {
                  await scheduleReminders(id, newDate);
+                 const patient = await Patient.findById(updatedAppointment.patient_id);
+                 if (patient && patient.phone && business) {
+                     try {
+                         const tDate = new Date(newDate).toLocaleDateString();
+                         const tTime = new Date(newDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                         await sendWhatsAppMessage(patient.phone, patient.name, updatedAppointment.service_type, business._id, undefined, 'appointment_rescheduled', undefined, [patient.name, tDate, tTime, updatedAppointment.service_type]);
+                     } catch (err) { console.error('Failed to send reschedule message', err); }
+                 }
              }
         }
 
@@ -199,7 +218,10 @@ export const updateAppointment = async (req: Request, res: Response) => {
                         patient.name, 
                         updatedAppointment.service_type, 
                         business._id, 
-                        `Hi ${patient.name}! 😊 Thank you for visiting ${business.name}. It was a pleasure serving you! See you next time.`
+                        undefined, 
+                        'thank_you_simple',
+                        undefined,
+                        [patient.name, updatedAppointment.service_type]
                     );
                 } else if (messageType === 'review') {
                     try {
@@ -211,7 +233,8 @@ export const updateAppointment = async (req: Request, res: Response) => {
                             business._id, 
                             undefined, 
                             'review_request',
-                            updatedAppointment._id.toString()
+                            updatedAppointment._id.toString(),
+                            [patient.name, updatedAppointment.service_type]
                         );
 
                         // Schedule the link unopened tracker

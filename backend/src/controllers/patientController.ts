@@ -10,6 +10,7 @@ export const getPatients = async (req: Request, res: Response) => {
         const patients = await Patient.find({ business_id }).sort({ createdAt: -1 });
         res.status(200).json(patients);
     } catch (error) {
+        console.error('Fetch Patients Error:', error);
         res.status(500).json({ error: 'Failed to fetch patients' });
     }
 };

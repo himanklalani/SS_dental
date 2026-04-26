@@ -1,0 +1,104 @@
+# Comprehensive WhatsApp Automations & Meta Configuration Plan
+
+We will update the backend logic to handle the complete lifecycle of an appointment with automated messaging via the Meta API.
+
+## Meta Dashboard Setup (Copy & Paste Guide)
+
+You will need to create the following templates in your **Meta WhatsApp Manager** (under Account Tools > Message Templates).
+For each template, select **Category: Utility** and **Language: English (US)**.
+
+### 1. Booking Confirmation (`booking_confirmation`)
+When booking is assigned or confirmed.
+- **Header**: Text -> `Booking Confirmed!`
+- **Body**:
+  ```text
+  Hello {{1}}, your booking at Saachi Shingrani Clinic is confirmed on {{2}} at {{3}}.
+  There is a 25-minute grace period if you happen to run late.
+  We look forward to seeing you and getting your {{4}} treatment done!
+  - Saachi Shingrani Clinic
+  ```
+- No buttons required.
+- *Variables: 1=Name, 2=Date, 3=Time, 4=Service Type*
+
+### 2. Standard Reminder (`appointment_reminder`)
+Sent 2 hours before the appointment.
+- **Header**: Text -> `Upcoming Appointment`
+- **Body**:
+  ```text
+  Hi {{1}}, this is a friendly reminder for your {{2}} appointment today at {{3}}. 
+  Please arrive on time. Reply STOP to opt-out of reminders.
+  ```
+- *Variables: 1=Name, 2=Service Type, 3=Time*
+
+### 3. Follow-up Reminder (`follow_up_reminder`)
+Sent 3 hours before a *follow-up* appointment.
+- **Header**: Text -> `Follow-up Reminder`
+- **Body**:
+  ```text
+  Hi {{1}}, this is a reminder for your upcoming follow-up visit for {{2}} today at {{3}}.
+  Reply STOP to opt-out.
+  ```
+- *Variables: 1=Name, 2=Service Type, 3=Time*
+
+### 4. Thank You (No Review) (`thank_you_simple`)
+Sent when marked 'Completed' with no review requested.
+- **Body**:
+  ```text
+  Hi {{1}}! Thank you for visiting Saachi Shingrani Clinic today for your {{2}}. It was a pleasure serving you! See you next time.
+  ```
+- *Variables: 1=Name, 2=Service Type*
+
+### 5. Review Request (`review_request`)
+Sent when marked 'Completed' AND review requested.
+- **Body**:
+  ```text
+  Hi {{1}}! Thank you for visiting Saachi Shingrani Clinic today for your {{2}}. 
+  We'd love to hear about your experience. Please leave us a quick review below!
+  ```
+- **Buttons (CTA)**: Web URL -> Type: Dynamic -> URL: `https://your-domain.com/{{1}}` (We will use the tracking proxy path here).
+- *Variables: Body 1=Name, Body 2=Service Type. Button URL = leave empty on meta, auto-filled by our proxy.*
+
+### 6. Review Follow Up (`review_follow_up`)
+Sent 24hrs later if they didn't click the review link.
+- **Body**:
+  ```text
+  Hi {{1}}, we hope you are doing well after your {{2}} treatment! 
+  If you have a spare minute, we'd greatly appreciate your feedback.
+  ```
+- **Buttons (CTA)**: Web URL -> Type: Dynamic -> URL: `https://your-domain.com/{{1}}`
+- *Variables: Body 1=Name, Body 2=Service Type.*
+
+### 7. Cancellation (`appointment_cancelled`)
+- **Body**:
+  ```text
+  Hi {{1}}, your appointment for {{2}} at Saachi Shingrani Clinic has been cancelled. Please contact us to reschedule.
+  ```
+- *Variables: 1=Name, 2=Service Type*
+
+### 8. Rescheduled (`appointment_rescheduled`)
+- **Body**:
+  ```text
+  Hi {{1}}, your appointment has been rescheduled to {{2}} at {{3}} for your {{4}}. Let us know if this doesn't work for you.
+  ```
+- *Variables: 1=Name, 2=Date, 3=Time, 4=Service Type*
+
+---
+
+## Technical Implementations (Backend Changes)
+
+### 1. Refactor WhatsApp Service (`whatsappService.ts`)
+- Modify `sendWhatsAppMessage` so that instead of taking a hardcoded list of variables (`name, business.name, customMessage`), it accepts an array of strings `templateParams: string[]`. This allows us to pass a dynamic number of variables (like Date and Time) to different templates.
+
+### 2. Update Scheduling Logic (`schedulerService.ts`)
+- **2-Hour Rule**: We will check `createdAt` vs `appointment_date`. If the gap is less than 4 hours, we won't schedule the 2-hour reminder.
+- **Follow-up Rule**: We will add a `scheduleFollowUpReminder()` function that triggers 3 hours before an appointment (called specifically when the appointment logic dictates it's a follow-up).
+
+### 3. Update Controller Logic (`appointmentController.ts`)
+- During appointment **Create/Update** to `Booked/Confirmed`, we format the Date and Time and pass it as parameters to the new `booking_confirmation` payload.
+- In `updateAppointment`, when detecting a **Reschedule** (date/time altered), send `appointment_rescheduled`.
+- In `updateAppointment` or `deleteAppointment`, when detecting a **Cancellation**, send `appointment_cancelled`.
+- Update the completion flow to utilize the new template strings defined above.
+
+## User Review Required
+> [!IMPORTANT]
+> Please review the exact texts for the templates above. If you want to change any wording, let me know now OR you can change them slightly when copying them into Meta (as long as the number of `{{variables}}` stays the same!). Let me know if you approve this plan to begin implementation.

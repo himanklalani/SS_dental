@@ -4,7 +4,7 @@ import Business from '../models/Business';
 const META_API_TOKEN = process.env.META_API_TOKEN;
 const META_PHONE_NUMBER_ID = process.env.META_PHONE_NUMBER_ID;
 
-export const sendWhatsAppMessage = async (phone: string, name: string, service_type: string, business_id: any, customMessage?: string, templateName?: string, appointmentId?: string) => {
+export const sendWhatsAppMessage = async (phone: string, name: string, service_type: string, business_id: any, customMessage?: string, templateName?: string, appointmentId?: string, templateParams?: string[]) => {
   
   const business = await Business.findById(business_id);
   if (!business) {
@@ -28,7 +28,13 @@ export const sendWhatsAppMessage = async (phone: string, name: string, service_t
 
   try {
       if (templateName) {
-          // Send as Template Message (Required for outbound non-24h window)
+          // Default backwards compatible mapping if templateParams not provided
+          const defaultParams = [
+              { type: "text", text: name },
+              { type: "text", text: business.name },
+              { type: "text", text: customMessage || service_type }
+          ];
+
           payload.type = "template";
           payload.template = {
               name: templateName,
@@ -38,11 +44,7 @@ export const sendWhatsAppMessage = async (phone: string, name: string, service_t
               components: [
                   {
                       type: "body",
-                      parameters: [
-                          { type: "text", text: name },
-                          { type: "text", text: business.name },
-                          { type: "text", text: customMessage || service_type }
-                      ]
+                      parameters: templateParams ? templateParams.map(text => ({ type: "text", text })) : defaultParams
                   }
               ]
           };

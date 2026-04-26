@@ -5,6 +5,7 @@ import Business from '../models/Business';
 import Doctor from '../models/Doctor';
 import { queueReviewRequest } from '../services/queueService';
 import Appointment from '../models/Appointment';
+import { sendWhatsAppMessage } from '../services/whatsappService';
 
 // @desc    Track review link click and redirect
 // @route   GET /api/r/:appointmentId
@@ -113,6 +114,40 @@ export const triggerReview = async (req: Request, res: Response) => {
   }
 };
 
+// @desc    Send a generic pre-approved message to a patient
+// @route   POST /api/send-direct
+// @access  Private
+export const sendDirectMessage = async (req: Request, res: Response) => {
+    try {
+        const { business_id, phone, name } = req.body;
+        
+        if (!business_id || !phone || !name) {
+            return res.status(400).json({ message: 'Missing required fields: business_id, phone, name' });
+        }
+
+        const business = await Business.findById(business_id);
+        if (!business) return res.status(404).json({ message: 'Business not found' });
+
+        // Uses the pre-approved Meta template 'generic_clinic_message'
+        // Template text: "Hi {{1}}! This is Saachi Shingrani Clinic. Book your next appointment or reach us at our website."
+        const response = await sendWhatsAppMessage(
+            phone,
+            name,
+            'General',
+            business._id,
+            undefined,
+            'generic_clinic_message',
+            undefined,
+            [name]
+        );
+
+        res.status(200).json({ message: 'Message dispatched successfully', sid: response.sid });
+    } catch (error: any) {
+        console.error("Send Direct Error:", error.response?.data || error);
+        res.status(500).json({ message: 'Failed to dispatch message', error: error.response?.data?.error?.message || error.message });
+    }
+};
+
 // @desc    Schedule a review request
 // @route   POST /api/schedule
 // @access  Private
@@ -188,23 +223,17 @@ export const getAnalytics = async (req: Request, res: Response) => {
         return res.status(400).json({ message: 'Invalid Business ID format' });
     }
 
-    const totalSent = await Message.countDocuments({ business_id, status: { $in: ['sent', 'delivered', 'clicked', 'completed'] } });
-    const totalClicked = await Message.countDocuments({ business_id, status: { $in: ['clicked', 'completed'] } });
-    const totalCompleted = await Message.countDocuments({ business_id, status: 'completed' });
-    const totalQueued = await Message.countDocuments({ business_id, status: 'queued' });
-    const totalFailed = await Message.countDocuments({ business_id, status: 'failed' });
-
+    const totalSent = await Appointment.countDocuments({ business_id, review_requested: true });
+    const totalClicked = await Appointment.countDocuments({ business_id, review_link_clicked: true });
+    
+    // We do not have a robust "conversions" tracker for Google Reviews directly, 
+    // so we set it to null or remove it.
     const ctr = totalSent > 0 ? (totalClicked / totalSent) * 100 : 0;
-    const completionRate = totalClicked > 0 ? (totalCompleted / totalClicked) * 100 : 0;
 
     res.status(200).json({
         totalSent,
         totalClicked,
-        totalCompleted,
-        totalQueued,
-        totalFailed,
         clickThroughRate: ctr.toFixed(2),
-        completionRate: completionRate.toFixed(2)
     });
 
   } catch (error: any) {

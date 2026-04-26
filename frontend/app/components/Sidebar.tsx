@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Settings, ShieldCheck, Menu, X, Sun, Moon, Box, User, Calendar } from 'lucide-react';
+import { LayoutDashboard, Settings, ShieldCheck, Menu, X, Sun, Moon, Box, User, Calendar, Activity } from 'lucide-react';
 
 const Sidebar = () => {
   const pathname = usePathname();
@@ -31,6 +31,7 @@ const Sidebar = () => {
     { name: 'Patients',        href: '/dashboard/patients',       icon: User },
     { name: 'Appointments',    href: '/dashboard/appointments',   icon: Calendar },
     { name: 'Configuration',   href: '/dashboard/settings',       icon: Settings },
+    { name: 'Healthcheck',     href: '/dashboard/health',         icon: Activity },
     { name: 'Manual Trigger',  href: '/dashboard/admin',          icon: ShieldCheck },
   ];
 

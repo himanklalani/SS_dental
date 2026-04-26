@@ -12,6 +12,18 @@ export const getAnalytics = async (businessId: string) => {
   return response.data;
 };
 
+export const getHealthStatus = async () => {
+  try {
+    const response = await api.get('/health');
+    return response.data;
+  } catch (error: any) {
+    if (error.response) {
+       return error.response.data;
+    }
+    return { status: 'offline', database: 'disconnected', whatsapp: 'unknown' };
+  }
+};
+
 export const triggerReview = async (data: any) => {
   const response = await api.post('/trigger-review', data);
   return response.data;

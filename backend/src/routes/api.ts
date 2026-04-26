@@ -3,8 +3,23 @@ import { triggerReview, getAnalytics, webhook, verifyWebhook, scheduleReview, ge
 import { getPatients, createPatient, updatePatient, getPatient, deletePatient } from '../controllers/patientController';
 import { getAppointments, createAppointment, updateAppointment, deleteAppointment, createPublicBooking } from '../controllers/appointmentController';
 import Doctor from '../models/Doctor';
+import mongoose from 'mongoose';
 
 const router = express.Router();
+
+// Healthcheck Endpoint
+router.get('/health', (req, res) => {
+    const dbState = mongoose.connection.readyState;
+    const dbStatus = dbState === 1 ? 'connected' : dbState === 2 ? 'connecting' : 'disconnected';
+    const whatsappStatus = process.env.META_API_TOKEN && process.env.META_PHONE_NUMBER_ID ? 'configured' : 'missing_config';
+    
+    res.status(dbState === 1 ? 200 : 503).json({
+        status: dbState === 1 ? 'online' : 'degraded',
+        database: dbStatus,
+        whatsapp: whatsappStatus,
+        timestamp: new Date().toISOString()
+    });
+});
 
 // Tracking Endpoint
 router.get('/r/:appointmentId', trackReviewClick);

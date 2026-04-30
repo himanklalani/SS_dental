@@ -269,7 +269,10 @@ export const createPublicBooking = async (req: Request, res: Response) => {
         // Name → lowercase, trimmed (stored consistently regardless of what user typed)
         const normalizedName = name.trim().toLowerCase();
         // Phone → strip everything except digits and leading +
-        const normalizedPhone = phone.trim().replace(/[^\d+]/g, '');
+        let normalizedPhone = phone.trim().replace(/[^\d+]/g, '');
+        if (normalizedPhone && !normalizedPhone.startsWith('+')) {
+            normalizedPhone = '+91' + normalizedPhone;
+        }
 
         // ── 2. Validate Business and API Key ─────────────────────────────────────
         const business = await Business.findOne({ _id: business_id, api_key });

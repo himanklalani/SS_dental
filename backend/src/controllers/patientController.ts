@@ -15,10 +15,22 @@ export const getPatients = async (req: Request, res: Response) => {
     }
 };
 
+const normalizeData = (data: any) => {
+    if (data.name) data.name = data.name.trim().toLowerCase();
+    if (data.phone) {
+        let p = data.phone.trim().replace(/[^\d+]/g, '');
+        if (p && !p.startsWith('+')) p = '+91' + p;
+        data.phone = p;
+    }
+    if (data.email) data.email = data.email.trim().toLowerCase();
+    return data;
+};
+
 // Create a new patient
 export const createPatient = async (req: Request, res: Response) => {
     try {
-        const patient = new Patient(req.body);
+        const patientData = normalizeData(req.body);
+        const patient = new Patient(patientData);
         await patient.save();
         res.status(201).json(patient);
     } catch (error) {
@@ -30,7 +42,8 @@ export const createPatient = async (req: Request, res: Response) => {
 export const updatePatient = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
-        const patient = await Patient.findByIdAndUpdate(id, req.body, { new: true });
+        const patientData = normalizeData(req.body);
+        const patient = await Patient.findByIdAndUpdate(id, patientData, { new: true });
         res.status(200).json(patient);
     } catch (error) {
         res.status(500).json({ error: 'Failed to update patient' });

@@ -79,7 +79,7 @@ export default function AppointmentsPage() {
             appointment_time: initialTime,
             service_type: appt.service_type || 'Consultation',
             preferred_slot: appt.preferred_slot || 'Morning',
-            status: appt.status || 'Booked',
+            status: appt.status === 'Requested' ? 'Booked' : (appt.status || 'Booked'),
             notes: appt.notes || ''
         });
         setShowAddModal(true);
@@ -304,8 +304,18 @@ export default function AppointmentsPage() {
                                     </div>
                                 </div>
                                 <div>
+                                    <label className={labelCls}>Status</label>
+                                    <select className={inputCls} value={newAppointment.status} onChange={e => setNewAppointment({...newAppointment, status: e.target.value})}>
+                                        <option value="Requested">Requested (Web)</option>
+                                        <option value="Booked">Booked</option>
+                                        <option value="Confirmed">Confirmed</option>
+                                        <option value="Completed">Completed</option>
+                                        <option value="Cancelled">Cancelled</option>
+                                    </select>
+                                </div>
+                                <div>
                                     <label className={labelCls}>Notes / Chief Complaint</label>
-                                    <textarea className={inputCls} rows={3} value={newAppointment.notes} onChange={e => setNewAppointment({...newAppointment, notes: e.target.value})} />
+                                    <textarea className={inputCls} rows={2} value={newAppointment.notes} onChange={e => setNewAppointment({...newAppointment, notes: e.target.value})} />
                                 </div>
                                 <div className="flex gap-3 pt-2">
                                     <button type="button" onClick={() => { setShowAddModal(false); setEditingAppointment(null); }} className="flex-1 py-3 bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-white rounded font-medium hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors">Cancel</button>

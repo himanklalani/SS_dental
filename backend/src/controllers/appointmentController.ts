@@ -191,18 +191,31 @@ export const updateAppointment = async (req: Request, res: Response) => {
             }
         }
 
-        if (newDate && newDate.getTime() !== oldAppointment.appointment_date?.getTime()) {
-             // Rescheduled logic: reset reminders
-             if (['Booked', 'Confirmed'].includes(updatedAppointment.status)) {
-                 await scheduleReminders(id, newDate);
-                 const patient = await Patient.findById(updatedAppointment.patient_id);
-                 if (patient && patient.phone && business) {
-                     try {
-                         const tDate = new Date(newDate).toLocaleDateString();
-                         const tTime = new Date(newDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                         await sendWhatsAppMessage(patient.phone, patient.name, updatedAppointment.service_type, business._id, undefined, 'appointment_rescheduled', undefined, [patient.name, tDate, tTime, updatedAppointment.service_type]);
-                     } catch (err) { console.error('Failed to send reschedule message', err); }
-                 }
+        const wasRequested = oldAppointment.status === 'Requested';
+        const isNowApproved = ['Booked', 'Confirmed'].includes(updatedAppointment.status);
+        const isDateChanged = newDate && newDate.getTime() !== oldAppointment.appointment_date?.getTime();
+
+        if (wasRequested && isNowApproved) {
+             // Approval Flow: A web booking was just assigned a slot
+             if (newDate) await scheduleReminders(id, newDate);
+             const patient = await Patient.findById(updatedAppointment.patient_id);
+             if (patient && patient.phone && business && newDate) {
+                 try {
+                     const tDate = new Date(newDate).toLocaleDateString();
+                     const tTime = new Date(newDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                     await sendWhatsAppMessage(patient.phone, patient.name, updatedAppointment.service_type, business._id, undefined, 'booking_confirmation', undefined, [patient.name, tDate, tTime, updatedAppointment.service_type]);
+                 } catch (err) { console.error('Failed to send confirmation message', err); }
+             }
+        } else if (isDateChanged && !wasRequested && isNowApproved) {
+             // Rescheduled logic: an already approved booking was moved to a new time
+             await scheduleReminders(id, newDate);
+             const patient = await Patient.findById(updatedAppointment.patient_id);
+             if (patient && patient.phone && business && newDate) {
+                 try {
+                     const tDate = new Date(newDate).toLocaleDateString();
+                     const tTime = new Date(newDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                     await sendWhatsAppMessage(patient.phone, patient.name, updatedAppointment.service_type, business._id, undefined, 'appointment_rescheduled', undefined, [patient.name, tDate, tTime, updatedAppointment.service_type]);
+                 } catch (err) { console.error('Failed to send reschedule message', err); }
              }
         }
 

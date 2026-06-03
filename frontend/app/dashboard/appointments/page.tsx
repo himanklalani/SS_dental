@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { getAppointments, createAppointment, getPatients, updateAppointment, deleteAppointment } from '../../lib/api';
-import { Calendar, Clock, User, Plus, Search, Loader2, CheckCircle, XCircle, FileText, Edit, Trash2, Star, MessageSquare } from 'lucide-react';
+import { Calendar, Clock, User, Plus, Search, Loader2, CheckCircle, XCircle, FileText, Edit, Trash2, Star, MessageSquare, MousePointerClick } from 'lucide-react';
 
 const inputCls = "w-full bg-neutral-100 dark:bg-neutral-950 border border-neutral-300 dark:border-neutral-800 rounded p-3 text-neutral-900 dark:text-white focus:border-neutral-900 dark:focus:border-white outline-none transition-colors";
 const labelCls = "block text-xs font-bold text-neutral-500 uppercase tracking-wider mb-1.5";
@@ -218,8 +218,15 @@ export default function AppointmentsPage() {
                                             {appt.status}
                                         </div>
                                         {appt.review_requested && (
-                                            <div className="mt-1 flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-500">
-                                                <CheckCircle size={10} /><span>Review Sent</span>
+                                            <div className="mt-1 space-y-1">
+                                                <div className="flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-500">
+                                                    <CheckCircle size={10} /><span>Review Sent</span>
+                                                </div>
+                                                {appt.review_link_clicked && (
+                                                    <div className="flex items-center gap-1 text-[10px] text-blue-600 dark:text-blue-500">
+                                                        <MousePointerClick size={10} /><span>Link Clicked!</span>
+                                                    </div>
+                                                )}
                                             </div>
                                         )}
                                     </td>

@@ -120,10 +120,15 @@ export default function AdminPanel() {
             <div className="bg-neutral-950 rounded p-4 border border-neutral-800 font-mono text-xs leading-relaxed text-neutral-300 space-y-2">
               <p className="text-neutral-500">// generic_clinic_message</p>
               <p>
-                Hi <span className="text-emerald-400">{formData.name || '{{1}}'}</span>! 👋 This is{' '}
-                <span className="text-blue-400">Saachi Shingrani Clinic</span>.
+                Greetings from <span className="text-blue-400">Dr. Saachi Shingrani's Dental Care</span>,
               </p>
-              <p>We hope you are doing well! Feel free to reach out to us or book your next appointment through our website.</p>
+              <p>
+                 <span className="text-emerald-400">{formData.name || '{{1}}'}</span>, we sincerely hope you are doing well. Please feel free to reach out to us or book your next appointment at your convenience.
+              </p>
+              <div className="flex gap-2 mt-2 pt-2 border-t border-neutral-800">
+                <span className="bg-neutral-800 px-2 py-1 rounded text-[10px] uppercase text-neutral-400 flex items-center gap-1">🔗 Book through website</span>
+                <span className="bg-neutral-800 px-2 py-1 rounded text-[10px] uppercase text-neutral-400 flex items-center gap-1">↩ Contact Clinic</span>
+              </div>
             </div>
             <p className="mt-3 text-xs text-neutral-400 font-mono">This template must be pre-approved in Meta Business Suite before dispatching.</p>
           </div>

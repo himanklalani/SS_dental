@@ -42,7 +42,7 @@ export default function AdminPanel() {
         </div>
         <div className="flex items-center gap-2 px-3 py-1 bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded text-xs font-mono text-neutral-500">
           <Terminal size={14} />
-          <span>MODE: MANUAL_OVERRIDE</span>
+          <span>SRS Dental Care</span>
         </div>
       </div>
 

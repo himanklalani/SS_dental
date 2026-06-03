@@ -13,7 +13,7 @@ export default function LoginPage() {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (username === 'srsbooking' && password === '9004402797') {
+    if (username === 'srsdentalcare' && password === '9004402797') {
       Cookies.set('srs_auth', 'authenticated', { expires: 7 }); // Cookie expires in 7 days
       router.push('/dashboard');
     } else {

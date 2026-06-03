@@ -7,6 +7,7 @@ export interface ICustomer extends Document {
   business_id: mongoose.Types.ObjectId;
   last_interaction: Date;
   opt_out: boolean;
+  last_message_received_at?: Date;
   createdAt: Date;
 }
 
@@ -17,6 +18,7 @@ const CustomerSchema: Schema = new Schema({
   business_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Business', required: true },
   last_interaction: { type: Date, default: Date.now },
   opt_out: { type: Boolean, default: false },
+  last_message_received_at: { type: Date },
 }, { timestamps: true });
 
 // Compound index to ensure unique customer per business (optional, but good for uniqueness if required)

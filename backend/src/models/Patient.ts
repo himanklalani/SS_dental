@@ -32,6 +32,7 @@ export interface IPatient extends Document {
   preferred_contact: 'Call' | 'SMS' | 'WhatsApp' | 'Email';
   status: 'New' | 'Active' | 'Inactive' | 'Lost';
   tags: string[];
+  last_message_received_at?: Date;
   
   createdAt: Date;
   updatedAt: Date;
@@ -72,7 +73,8 @@ const PatientSchema: Schema = new Schema({
     enum: ['New', 'Active', 'Inactive', 'Lost'],
     default: 'New'
   },
-  tags: [{ type: String }]
+  tags: [{ type: String }],
+  last_message_received_at: { type: Date }
 }, { timestamps: true });
 
 export default mongoose.model<IPatient>('Patient', PatientSchema);

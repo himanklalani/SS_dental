@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import Customer from '../models/Customer';
+import Patient from '../models/Patient';
 import Message from '../models/Message';
 import Business from '../models/Business';
 import Doctor from '../models/Doctor';
@@ -25,7 +26,7 @@ export const trackReviewClick = async (req: Request, res: Response) => {
         await appointment.save();
 
         const business = appointment.business_id as any;
-        const targetUrl = business.google_review_url || 'https://google.com';
+        const targetUrl = business.google_review_url || 'https://g.page/r/Cb40ziDcqQoHEAE/review';
         
         // Redirect the user
         res.redirect(targetUrl);
@@ -289,11 +290,23 @@ export const webhook = async (req: Request, res: Response) => {
                 }
             }
 
-            // Handle Incoming Messages (e.g. from patient sending STOP)
+            // Handle Incoming Messages (e.g. from patient sending STOP or Auto-Reply)
             if (value.messages && value.messages[0]) {
                 const messageObj = value.messages[0];
-                const From = messageObj.from; // Phone number without +
+                let From = messageObj.from; // Phone number without +
+                
+                // Ensure from has +91 or + if needed, Meta often sends without +. 
+                // Our DB stores with +. Let's ensure format matches DB (e.g., +919004402797).
+                if (!From.startsWith('+')) {
+                    From = '+' + From;
+                }
 
+                // 1. Update 24-hour window timestamp for both Patient and Customer
+                await Patient.updateMany({ phone: From }, { last_message_received_at: new Date() });
+                await Customer.updateMany({ phone: From }, { last_message_received_at: new Date() });
+                console.log(`[Webhook] Opened 24h window for ${From}`);
+
+                // 2. Handle Text Messages & Auto-replies
                 if (messageObj.type === 'text' && messageObj.text?.body) {
                     const Body = messageObj.text.body;
                     
@@ -302,9 +315,36 @@ export const webhook = async (req: Request, res: Response) => {
                         await Customer.updateMany({ phone: From }, { opt_out: true });
                         console.log(`[Webhook] Customer ${From} opted out via STOP command`);
                     } else {
-                        // Future implementation for bot replies could go here
                         console.log(`[Webhook] Received message from ${From}: ${Body}`);
+                        
+                        // Send Auto-Reply (Free Form) if they reach out
+                        try {
+                            const business = await Business.findOne(); // Grab first business assuming single clinic
+                            if (business) {
+                                await sendWhatsAppMessage(
+                                    From, 
+                                    'Patient', 
+                                    'General', 
+                                    business._id, 
+                                    undefined, 
+                                    'auto_reply_hello' // We will intercept this in whatsappService!
+                                );
+                            }
+                        } catch (e) {
+                            console.error('[Webhook] Failed to send auto reply', e);
+                        }
                     }
+                } 
+                // 3. Handle Button Clicks (Quick Replies)
+                else if (messageObj.type === 'button') {
+                    const buttonText = messageObj.button?.text;
+                    console.log(`[Webhook] User ${From} clicked button: ${buttonText}`);
+                    // Timestamp was already updated above, opening the window!
+                }
+                else if (messageObj.type === 'interactive') {
+                    const buttonReply = messageObj.interactive?.button_reply?.title;
+                    console.log(`[Webhook] User ${From} clicked interactive button: ${buttonReply}`);
+                    // Timestamp updated above, window opened!
                 }
             }
         }

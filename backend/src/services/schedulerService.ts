@@ -53,12 +53,12 @@ export const cancelReminders = (appointmentId: string) => {
 export const scheduleReviewFollowUp = (appointmentId: string) => {
     cancelReviewFollowUp(appointmentId);
 
-    const followupDate = new Date(Date.now() + (24 * 60 * 60 * 1000));
+    const followupDate = new Date(Date.now() + (48 * 60 * 60 * 1000));
     const cronTime = `${followupDate.getMinutes()} ${followupDate.getHours()} ${followupDate.getDate()} ${followupDate.getMonth() + 1} *`;
     
     const job = cron.schedule(cronTime, () => processReviewFollowUp(appointmentId));
     scheduledReviewFollowUps.set(appointmentId, job);
-    console.log(`[Cron] Scheduled 24h review follow-up for ${appointmentId} at ${followupDate}`);
+    console.log(`[Cron] Scheduled 48h review follow-up for ${appointmentId} at ${followupDate}`);
 };
 
 export const cancelReviewFollowUp = (appointmentId: string) => {
@@ -123,7 +123,7 @@ async function processReviewFollowUp(appointmentId: string) {
 
         if (!patient || !patient.phone) return;
 
-        console.log(`[Cron] Sending 24h review follow-up to ${patient.phone}`);
+        console.log(`[Cron] Sending 48h review follow-up to ${patient.phone}`);
         await sendWhatsAppMessage(
             patient.phone, 
             patient.name, 

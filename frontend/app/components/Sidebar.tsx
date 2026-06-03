@@ -2,11 +2,13 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Settings, ShieldCheck, Menu, X, Sun, Moon, Box, User, Calendar, Activity } from 'lucide-react';
+import { usePathname, useRouter } from 'next/navigation';
+import { LayoutDashboard, Settings, ShieldCheck, Menu, X, Sun, Moon, Box, User, Calendar, Activity, LogOut } from 'lucide-react';
+import Cookies from 'js-cookie';
 
 const Sidebar = () => {
   const pathname = usePathname();
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [theme, setTheme] = useState('dark');
 
@@ -24,6 +26,11 @@ const Sidebar = () => {
       document.documentElement.classList.remove('dark');
       localStorage.setItem('theme', 'light');
     }
+  };
+
+  const handleLogout = () => {
+    Cookies.remove('srs_auth');
+    router.push('/login');
   };
 
   const menuItems = [
@@ -93,13 +100,18 @@ const Sidebar = () => {
           {/* Theme Toggle */}
           <div className="p-4 border-t border-neutral-200 dark:border-neutral-800">
             <button onClick={toggleTheme}
-              className="w-full flex items-center gap-3 px-3 py-2.5 text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-white rounded transition-colors group">
+              className="w-full flex items-center gap-3 px-3 py-2.5 text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-white rounded transition-colors group mb-2">
               {theme === 'dark' ? (
                 <Sun size={18} className="text-neutral-400 group-hover:text-neutral-700 dark:group-hover:text-yellow-400 transition-colors" />
               ) : (
                 <Moon size={18} className="text-neutral-400 group-hover:text-neutral-700 dark:group-hover:text-white transition-colors" />
               )}
               <span className="font-medium text-sm">{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
+            </button>
+            <button onClick={handleLogout}
+              className="w-full flex items-center gap-3 px-3 py-2.5 text-red-500/80 hover:bg-red-500/10 hover:text-red-500 rounded transition-colors group">
+              <LogOut size={18} className="transition-colors" />
+              <span className="font-medium text-sm">Logout</span>
             </button>
           </div>
         </div>

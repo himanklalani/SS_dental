@@ -1,5 +1,6 @@
 import axios from 'axios';
 import Business from '../models/Business';
+import Patient from '../models/Patient';
 
 const META_API_TOKEN = process.env.META_API_TOKEN;
 const META_PHONE_NUMBER_ID = process.env.META_PHONE_NUMBER_ID;
@@ -26,8 +27,73 @@ export const sendWhatsAppMessage = async (phone: string, name: string, service_t
       to: cleanPhone
   };
 
+  // Check 24h window
+  let windowIsOpen = false;
+  const dbPhone = phone.startsWith('+') ? phone : '+' + cleanPhone;
+  const patient = await Patient.findOne({ phone: dbPhone });
+  if (patient && patient.last_message_received_at) {
+      const hoursSinceLastMessage = (Date.now() - patient.last_message_received_at.getTime()) / (1000 * 60 * 60);
+      if (hoursSinceLastMessage < 24) {
+          windowIsOpen = true;
+      }
+  }
+
   try {
-      if (templateName) {
+      // SMART ROUTING INTERCEPTION
+      let overrideToFreeForm = false;
+      let freeFormPayload: any = null;
+
+      if (windowIsOpen && templateName) {
+          if (templateName === 'auto_reply_hello') {
+              overrideToFreeForm = true;
+              freeFormPayload = {
+                  type: "text",
+                  text: { body: `Hello! Welcome to Dr. Saachi Shingrani's Dental Care.\n\nTo book an appointment, please visit our website: https://srs-website-tan.vercel.app/book` }
+              };
+          } else if (templateName === 'booking_confirmation') {
+               overrideToFreeForm = true;
+               freeFormPayload = {
+                   type: "interactive",
+                   interactive: {
+                       type: "button",
+                       body: { text: `Hi ${name}, your appointment for ${templateParams?.[3] || service_type} is scheduled on ${templateParams?.[1]} at ${templateParams?.[2]} at Dr. Saachi Shingrani's Dental Care. See you soon!` },
+                       action: {
+                           buttons: [
+                               { type: "reply", reply: { id: "ok_confirmed", title: "Okay, Confirmed" } }
+                           ]
+                       }
+                   }
+               };
+          } else if (templateName === 'appointment_reminder') {
+               overrideToFreeForm = true;
+               freeFormPayload = {
+                   type: "interactive",
+                   interactive: {
+                       type: "button",
+                       body: { text: `Hi ${name}, this is a friendly reminder that you have an appointment for ${templateParams?.[1] || service_type} today at ${templateParams?.[2]}. We look forward to seeing you!` },
+                       action: {
+                           buttons: [
+                               { type: "reply", reply: { id: "ok_confirm_remind", title: "Ok, Confirm" } }
+                           ]
+                       }
+                   }
+               };
+          } else if (templateName === 'thank_you_simple' || templateName === 'review_request') {
+               overrideToFreeForm = true;
+               const reviewUrl = `https://review-booking-system.onrender.com/api/r/${appointmentId}`;
+               freeFormPayload = {
+                   type: "text",
+                   text: { body: `Hi ${name}, thank you for visiting us for your ${service_type}. We hope you had a great experience! Could you please take a moment to leave us a review?\n\nLeave a review here: ${reviewUrl}` }
+               };
+          }
+      }
+
+      if (overrideToFreeForm) {
+          payload.type = freeFormPayload.type;
+          if (freeFormPayload.type === 'interactive') payload.interactive = freeFormPayload.interactive;
+          if (freeFormPayload.type === 'text') payload.text = freeFormPayload.text;
+          console.log(`[Meta API] Smart Routing: Intercepted ${templateName} -> Sending Free Form Message to ${cleanPhone}`);
+      } else if (templateName) {
           // Default backwards compatible mapping if templateParams not provided
           const defaultParams = [
               { type: "text", text: name },

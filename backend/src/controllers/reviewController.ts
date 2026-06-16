@@ -129,16 +129,16 @@ export const sendDirectMessage = async (req: Request, res: Response) => {
         const business = await Business.findById(business_id);
         if (!business) return res.status(404).json({ message: 'Business not found' });
 
-        // Uses the pre-approved Meta template 'hello_world' for testing
+        // Uses the pre-approved Meta template 'generic_clinic_msg'
         const response = await sendWhatsAppMessage(
             phone,
             name,
             'General',
             business._id,
             undefined,
-            'hello_world',
+            'generic_clinic_msg',
             undefined,
-            []
+            [name]
         );
 
         res.status(200).json({ message: 'Message dispatched successfully', sid: response.sid });

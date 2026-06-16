@@ -129,7 +129,7 @@ export const sendDirectMessage = async (req: Request, res: Response) => {
         const business = await Business.findById(business_id);
         if (!business) return res.status(404).json({ message: 'Business not found' });
 
-        // Uses the pre-approved Meta template 'generic_clinic_message'
+        // Uses the pre-approved Meta template 'generic_clinic_msg'
         // Template text: "Hi {{1}}! This is Saachi Shingrani Clinic. Book your next appointment or reach us at our website."
         const response = await sendWhatsAppMessage(
             phone,
@@ -137,7 +137,7 @@ export const sendDirectMessage = async (req: Request, res: Response) => {
             'General',
             business._id,
             undefined,
-            'generic_clinic_message',
+            'generic_clinic_msg',
             undefined,
             [name]
         );

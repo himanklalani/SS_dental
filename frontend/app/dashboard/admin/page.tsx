@@ -57,7 +57,7 @@ export default function AdminPanel() {
                 </div>
                 <div>
                   <h2 className="text-lg font-medium text-neutral-900 dark:text-white">Recipient Details</h2>
-                  <p className="text-xs text-neutral-400 font-mono">Template: generic_clinic_message</p>
+                  <p className="text-xs text-neutral-400 font-mono">Template: generic_clinic_msg</p>
                 </div>
               </div>
 
@@ -118,7 +118,7 @@ export default function AdminPanel() {
               Template Preview
             </h3>
             <div className="bg-neutral-950 rounded p-4 border border-neutral-800 font-mono text-xs leading-relaxed text-neutral-300 space-y-2">
-              <p className="text-neutral-500">// generic_clinic_message</p>
+              <p className="text-neutral-500">// generic_clinic_msg</p>
               <p>
                 Greetings from <span className="text-blue-400">Dr. Saachi Shingrani's Dental Care</span>,
               </p>

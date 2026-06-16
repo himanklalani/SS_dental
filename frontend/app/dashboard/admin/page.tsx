@@ -8,7 +8,7 @@ const inputCls = "pl-10 block w-full rounded bg-neutral-100 dark:bg-neutral-950 
 
 export default function AdminPanel() {
   const [formData, setFormData] = useState({
-    name: '', phone: '', business_id: '65f1a2b3c4d5e6f7a8b9c0d1'
+    name: '', phone: '', business_id: '69edf7401e9164e3fd73e073'
   });
   const [status, setStatus] = useState<'idle' | 'sending' | 'success' | 'error'>('idle');
   const [statusMessage, setStatusMessage] = useState('');

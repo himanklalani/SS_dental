@@ -105,7 +105,7 @@ export const sendWhatsAppMessage = async (phone: string, name: string, service_t
           payload.template = {
               name: templateName,
               language: {
-                  code: "en_US"
+                  code: "en"
               },
               components: [
                   {

@@ -105,15 +105,18 @@ export const sendWhatsAppMessage = async (phone: string, name: string, service_t
           payload.template = {
               name: templateName,
               language: {
-                  code: "en"
-              },
-              components: [
+                  code: templateName === 'hello_world' ? 'en_US' : 'en'
+              }
+          };
+
+          if (templateName !== 'hello_world') {
+              payload.template.components = [
                   {
                       type: "body",
                       parameters: templateParams ? templateParams.map(text => ({ type: "text", text })) : defaultParams
                   }
-              ]
-          };
+              ];
+          }
 
           // If review request, add a URL button parameter targeting our tracking proxy
           if (templateName === 'review_request' || templateName === 'review_follow_up') {

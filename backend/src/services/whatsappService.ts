@@ -48,7 +48,7 @@ export const sendWhatsAppMessage = async (phone: string, name: string, service_t
               overrideToFreeForm = true;
               freeFormPayload = {
                   type: "text",
-                  text: { body: `Hello! Welcome to Dr. Saachi Shingrani's Dental Care.\n\nTo book an appointment, please visit our website: https://srs-website-tan.vercel.app/book` }
+                  text: { body: `Hello! Welcome to Dr. Saachi Shingrani's Dental Care.\n\nTo book an appointment, please visit our website: www.srsdentalcare.in` }
               };
           } else if (templateName === 'booking_confirmation') {
                overrideToFreeForm = true;

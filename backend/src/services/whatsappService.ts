@@ -43,7 +43,7 @@ export const sendWhatsAppMessage = async (phone: string, name: string, service_t
       let overrideToFreeForm = false;
       let freeFormPayload: any = null;
 
-      if (windowIsOpen && templateName) {
+      if ((windowIsOpen || templateName === 'auto_reply_hello') && templateName) {
           if (templateName === 'auto_reply_hello') {
               overrideToFreeForm = true;
               freeFormPayload = {

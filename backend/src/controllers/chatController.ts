@@ -103,7 +103,7 @@ export const updateCustomerName = async (req: Request, res: Response) => {
 // @access  Private
 export const sendManualReply = async (req: Request, res: Response) => {
     try {
-        const { business_id, customer_id, text } = req.body;
+        const { business_id, customer_id, text, reply_to_message_id } = req.body;
 
         if (!business_id || !customer_id || !text) {
             return res.status(400).json({ message: 'Missing required fields' });
@@ -138,7 +138,11 @@ export const sendManualReply = async (req: Request, res: Response) => {
             customer.name,
             'General',
             business_id,
-            text
+            text,
+            undefined, // templateName
+            undefined, // appointmentId
+            undefined, // templateParams
+            reply_to_message_id
         );
 
         // Save as outbound message
@@ -215,7 +219,7 @@ export const getMediaUrl = async (req: Request, res: Response) => {
 // @access  Private
 export const sendMediaReply = async (req: Request, res: Response) => {
     try {
-        const { business_id, customer_id, caption } = req.body;
+        const { business_id, customer_id, caption, reply_to_message_id } = req.body;
         const file = req.file;
 
         if (!business_id || !customer_id || !file) {
@@ -251,7 +255,8 @@ export const sendMediaReply = async (req: Request, res: Response) => {
             file.buffer,
             file.mimetype,
             file.originalname,
-            caption
+            caption,
+            reply_to_message_id
         );
 
         let fallbackContent = `[${response.messageType.charAt(0).toUpperCase() + response.messageType.slice(1)} Attached]`;

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Send, Image as ImageIcon, FileText, Check, CheckCheck, Clock, Download, User, Trash2, Video, ArrowLeft, Paperclip, X, RefreshCw } from 'lucide-react';
+import { Search, Send, Image as ImageIcon, FileText, Check, CheckCheck, Clock, Download, User, Trash2, Video, ArrowLeft, Paperclip, X, RefreshCw, Reply } from 'lucide-react';
 import api from '@/app/lib/api';
 
 export default function InboxPage() {
@@ -14,6 +14,7 @@ export default function InboxPage() {
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [replyingToMessage, setReplyingToMessage] = useState<any>(null);
     const [searchQuery, setSearchQuery] = useState("");
 
     const [showUnreadOnly, setShowUnreadOnly] = useState(false);
@@ -111,6 +112,9 @@ export default function InboxPage() {
                 if (newMessage.trim()) {
                     formData.append('caption', newMessage.trim());
                 }
+                if (replyingToMessage?.whatsapp_message_id) {
+                    formData.append('reply_to_message_id', replyingToMessage.whatsapp_message_id);
+                }
 
                 res = await api.post('/chats/media-reply', formData, {
                     headers: { 'Content-Type': 'multipart/form-data' }
@@ -119,13 +123,15 @@ export default function InboxPage() {
                 res = await api.post('/chats/reply', {
                     business_id: businessId,
                     customer_id: selectedChat._id,
-                    text: newMessage.trim()
+                    text: newMessage.trim(),
+                    reply_to_message_id: replyingToMessage?.whatsapp_message_id
                 });
             }
             
             setMessages(prev => [...prev, res.data.data]);
             setNewMessage("");
             setSelectedFile(null);
+            setReplyingToMessage(null);
             if (fileInputRef.current) fileInputRef.current.value = "";
             
             // Update the last message in the chat list
@@ -394,7 +400,16 @@ export default function InboxPage() {
                             {messages.map((msg, idx) => {
                                 const isOutbound = msg.direction === 'outbound';
                                 return (
-                                    <div key={msg._id || idx} className={`flex ${isOutbound ? 'justify-end' : 'justify-start'}`}>
+                                    <div key={msg._id || idx} className={`flex items-center gap-2 group ${isOutbound ? 'justify-end' : 'justify-start'}`}>
+                                        {!isOutbound && (
+                                            <button 
+                                                onClick={() => setReplyingToMessage(msg)}
+                                                title="Reply to message"
+                                                className="opacity-0 group-hover:opacity-100 p-2 text-gray-400 hover:text-blue-500 hover:bg-gray-200 rounded-full transition-all focus:opacity-100"
+                                            >
+                                                <Reply className="w-4 h-4" />
+                                            </button>
+                                        )}
                                         <div className={`max-w-[70%] rounded-xl px-4 py-2 shadow-sm relative ${isOutbound ? 'bg-[#d9fdd3] text-gray-800 rounded-tr-none' : 'bg-white text-gray-800 rounded-tl-none'}`}>
                                             
                                             {/* Media Rendering */}
@@ -462,11 +477,40 @@ export default function InboxPage() {
                                                 {renderMessageStatus(msg)}
                                             </div>
                                         </div>
+                                        {isOutbound && (
+                                            <button 
+                                                onClick={() => setReplyingToMessage(msg)}
+                                                title="Reply to message"
+                                                className="opacity-0 group-hover:opacity-100 p-2 text-gray-400 hover:text-blue-500 hover:bg-gray-200 rounded-full transition-all focus:opacity-100"
+                                            >
+                                                <Reply className="w-4 h-4" />
+                                            </button>
+                                        )}
                                     </div>
                                 );
                             })}
                             <div ref={messagesEndRef} />
                         </div>
+
+                        {/* Replying To Preview Box */}
+                        {replyingToMessage && (
+                            <div className="absolute bottom-[72px] left-4 right-4 bg-gray-100 border-l-4 border-blue-500 rounded-lg p-3 flex items-center justify-between shadow-md z-10 animate-in slide-in-from-bottom-2">
+                                <div className="flex-1 min-w-0 pr-4">
+                                    <p className="text-xs font-bold text-blue-600 mb-0.5">
+                                        Replying to {replyingToMessage.direction === 'inbound' ? (selectedChat.name || 'Patient') : 'Yourself'}
+                                    </p>
+                                    <p className="text-sm text-gray-600 truncate">
+                                        {replyingToMessage.content || `[${replyingToMessage.message_type} attached]`}
+                                    </p>
+                                </div>
+                                <button 
+                                    onClick={() => setReplyingToMessage(null)}
+                                    className="p-1 hover:bg-gray-200 rounded-full text-gray-500 transition-colors"
+                                >
+                                    <X className="w-4 h-4" />
+                                </button>
+                            </div>
+                        )}
 
                         {/* Input Area */}
                         <div className="p-4 bg-[#f0f2f5] flex flex-col gap-2 relative">

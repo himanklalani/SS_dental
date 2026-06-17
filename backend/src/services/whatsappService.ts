@@ -5,7 +5,7 @@ import Patient from '../models/Patient';
 const META_API_TOKEN = process.env.META_API_TOKEN;
 const META_PHONE_NUMBER_ID = process.env.META_PHONE_NUMBER_ID;
 
-export const sendWhatsAppMessage = async (phone: string, name: string, service_type: string, business_id: any, customMessage?: string, templateName?: string, appointmentId?: string, templateParams?: string[]) => {
+export const sendWhatsAppMessage = async (phone: string, name: string, service_type: string, business_id: any, customMessage?: string, templateName?: string, appointmentId?: string, templateParams?: string[], replyToMessageId?: string) => {
   
   const business = await Business.findById(business_id);
   if (!business) {
@@ -26,6 +26,10 @@ export const sendWhatsAppMessage = async (phone: string, name: string, service_t
       recipient_type: "individual",
       to: cleanPhone
   };
+
+  if (replyToMessageId) {
+      payload.context = { message_id: replyToMessageId };
+  }
 
   // Check 24h window
   let windowIsOpen = false;
@@ -161,7 +165,7 @@ export const sendWhatsAppMessage = async (phone: string, name: string, service_t
 
 import FormData from 'form-data';
 
-export const sendWhatsAppMedia = async (phone: string, fileBuffer: Buffer, mimeType: string, filename: string, caption?: string) => {
+export const sendWhatsAppMedia = async (phone: string, fileBuffer: Buffer, mimeType: string, filename: string, caption?: string, replyToMessageId?: string) => {
     // Ensure Phone is purely numeric
     const cleanPhone = phone.replace('+', '').replace(/\s/g, '').replace(/[^0-9]/g, '');
 
@@ -216,6 +220,10 @@ export const sendWhatsAppMedia = async (phone: string, fileBuffer: Buffer, mimeT
         // For documents, it's highly recommended to provide a filename
         if (messageType === 'document') {
              payload[messageType].filename = filename;
+        }
+
+        if (replyToMessageId) {
+            payload.context = { message_id: replyToMessageId };
         }
 
         console.log(`[Meta API] Dispatching media message to ${cleanPhone}...`);

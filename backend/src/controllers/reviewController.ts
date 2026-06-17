@@ -141,6 +141,19 @@ export const sendDirectMessage = async (req: Request, res: Response) => {
             [name]
         );
 
+        const customer = await Customer.findOne({ phone, business_id: business._id });
+        if (customer) {
+             await Message.create({
+                 customer_id: customer._id,
+                 business_id: business._id,
+                 direction: 'outbound',
+                 message_type: 'template',
+                 status: 'sent',
+                 content: 'generic_clinic_msg',
+                 whatsapp_message_id: response?.sid
+             });
+        }
+
         res.status(200).json({ message: 'Message dispatched successfully', sid: response.sid });
     } catch (error: any) {
         console.error("Send Direct Error:", error.response?.data || error);
@@ -300,50 +313,121 @@ export const webhook = async (req: Request, res: Response) => {
                     From = '+' + From;
                 }
 
-                // 1. Update 24-hour window timestamp for both Patient and Customer
+                const business = await Business.findOne(); // Grab first business assuming single clinic
+                if (!business) return;
+
+                // 1. Find or create customer to link the message to
+                let customer = await Customer.findOne({ phone: From, business_id: business._id });
+                if (!customer) {
+                    customer = await Customer.create({
+                        name: messageObj.profile?.name || 'Unknown Patient',
+                        phone: From,
+                        business_id: business._id
+                    });
+                }
+
+                // 2. Update 24-hour window timestamp for both Patient and Customer
                 await Patient.updateMany({ phone: From }, { last_message_received_at: new Date() });
-                await Customer.updateMany({ phone: From }, { last_message_received_at: new Date() });
+                customer.last_interaction = new Date();
+                await customer.save();
                 console.log(`[Webhook] Opened 24h window for ${From}`);
 
-                // 2. Handle Text Messages & Auto-replies
+                // 3. Handle Text Messages & Auto-replies
                 if (messageObj.type === 'text' && messageObj.text?.body) {
                     const Body = messageObj.text.body;
                     
                     if (Body.trim().toUpperCase() === 'STOP') {
                         // Opt-out customer
-                        await Customer.updateMany({ phone: From }, { opt_out: true });
+                        customer.opt_out = true;
+                        await customer.save();
                         console.log(`[Webhook] Customer ${From} opted out via STOP command`);
                     } else {
                         console.log(`[Webhook] Received message from ${From}: ${Body}`);
                         
+                        // Save inbound message
+                        await Message.create({
+                            customer_id: customer._id,
+                            business_id: business._id,
+                            direction: 'inbound',
+                            message_type: 'text',
+                            status: 'received',
+                            content: Body,
+                            whatsapp_message_id: messageObj.id
+                        });
+
                         // Send Auto-Reply (Free Form) if they reach out
                         try {
-                            const business = await Business.findOne(); // Grab first business assuming single clinic
-                            if (business) {
-                                await sendWhatsAppMessage(
-                                    From, 
-                                    'Patient', 
-                                    'General', 
-                                    business._id, 
-                                    undefined, 
-                                    'auto_reply_hello' // We will intercept this in whatsappService!
-                                );
-                            }
+                            const response = await sendWhatsAppMessage(
+                                From, 
+                                customer.name, 
+                                'General', 
+                                business._id, 
+                                undefined, 
+                                'auto_reply_hello' // We will intercept this in whatsappService!
+                            );
+
+                            await Message.create({
+                                customer_id: customer._id,
+                                business_id: business._id,
+                                direction: 'outbound',
+                                message_type: 'template',
+                                status: 'sent',
+                                content: 'auto_reply_hello',
+                                whatsapp_message_id: response?.sid
+                            });
                         } catch (e) {
                             console.error('[Webhook] Failed to send auto reply', e);
                         }
                     }
                 } 
-                // 3. Handle Button Clicks (Quick Replies)
+                // 4. Handle Incoming Media (Images, Documents, Audio)
+                else if (['image', 'document', 'audio', 'video'].includes(messageObj.type)) {
+                    const mediaObj = messageObj[messageObj.type];
+                    const mediaId = mediaObj?.id;
+                    const caption = mediaObj?.caption || '';
+
+                    if (mediaId) {
+                        console.log(`[Webhook] Received media from ${From}: ${mediaId}`);
+                        await Message.create({
+                            customer_id: customer._id,
+                            business_id: business._id,
+                            direction: 'inbound',
+                            message_type: messageObj.type,
+                            status: 'received',
+                            content: caption || `Received a ${messageObj.type}`,
+                            media_id: mediaId,
+                            whatsapp_message_id: messageObj.id
+                        });
+                    }
+                }
+                // 5. Handle Button Clicks (Quick Replies)
                 else if (messageObj.type === 'button') {
                     const buttonText = messageObj.button?.text;
                     console.log(`[Webhook] User ${From} clicked button: ${buttonText}`);
-                    // Timestamp was already updated above, opening the window!
+                    
+                    await Message.create({
+                        customer_id: customer._id,
+                        business_id: business._id,
+                        direction: 'inbound',
+                        message_type: 'button',
+                        status: 'received',
+                        content: buttonText || 'Button clicked',
+                        whatsapp_message_id: messageObj.id
+                    });
                 }
                 else if (messageObj.type === 'interactive') {
                     const buttonReply = messageObj.interactive?.button_reply?.title;
                     console.log(`[Webhook] User ${From} clicked interactive button: ${buttonReply}`);
-                    // Timestamp updated above, window opened!
+                    
+                    await Message.create({
+                        customer_id: customer._id,
+                        business_id: business._id,
+                        direction: 'inbound',
+                        message_type: 'interactive',
+                        status: 'received',
+                        content: buttonReply || 'Interactive button clicked',
+                        whatsapp_message_id: messageObj.id
+                    });
                 }
             }
         }

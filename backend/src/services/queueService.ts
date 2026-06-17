@@ -21,26 +21,28 @@ interface ReviewJobData {
   phone: string;
   name: string;
   service_type: string;
+  template_name?: string;
 }
 
 // Extracted processor logic for reuse/fallback
 export const processReviewJob = async (data: ReviewJobData) => {
-  const { customer_id, business_id, phone, name, service_type } = data;
+  const { customer_id, business_id, phone, name, service_type, template_name } = data;
 
-  console.log(`Processing review request for ${name} (${phone})`);
+  const templateToSend = template_name || 'review_request';
+  console.log(`Processing review request/broadcast for ${name} (${phone}) with template: ${templateToSend}`);
 
   try {
-    // 1. Create a Message record with status 'queued' (if not already created)
-    
-    // 2. Send WhatsApp Message
-    const result = await sendWhatsAppMessage(phone, name, service_type, business_id, undefined, 'review_request');
+    // 1. Send WhatsApp Message
+    const result = await sendWhatsAppMessage(phone, name, service_type, business_id, undefined, templateToSend);
 
-    // 3. Update Message record
+    // 2. Update Message record
     await Message.create({
         customer_id,
         business_id,
+        direction: 'outbound',
+        message_type: 'template',
         status: 'sent',
-        content: 'review_request', // template used
+        content: templateToSend, // template used
         sent_at: new Date(),
         whatsapp_message_id: result.sid
     });
@@ -54,8 +56,10 @@ export const processReviewJob = async (data: ReviewJobData) => {
     await Message.create({
         customer_id,
         business_id,
+        direction: 'outbound',
+        message_type: 'template',
         status: 'failed',
-        content: 'Failed to send',
+        content: `Failed to send ${templateToSend}`,
         sent_at: new Date()
     });
     throw error;

@@ -327,17 +327,83 @@ export const webhook = async (req: Request, res: Response) => {
                     });
                 }
 
-                // 2. Update 24-hour window timestamp for both Patient and Customer
-                const lastInteraction = customer.last_interaction;
-                const hoursSinceLastInteraction = lastInteraction 
-                    ? (Date.now() - new Date(lastInteraction).getTime()) / (1000 * 60 * 60) 
-                    : 25; // if never interacted, treat as > 24h
-                
+                // 2. Determine 48-hour rule for auto-greetings
+                const patient = await Patient.findOne({ phone: From });
+                const hoursSinceLastMessage = patient?.last_message_received_at 
+                    ? (Date.now() - new Date(patient.last_message_received_at).getTime()) / (1000 * 60 * 60)
+                    : 999; // if no last message, treat as first time
+
+                // Update 24-hour window timestamp for both Patient and Customer
                 await Patient.updateMany({ phone: From }, { last_message_received_at: new Date() });
                 customer.last_interaction = new Date();
                 await customer.save();
                 console.log(`[Webhook] Opened 24h window for ${From}`);
 
+                // Spawn 23h 45m memory timer for window closure warning
+                const timeoutMs = 23.75 * 60 * 60 * 1000; // 23h 45m
+                setTimeout(async () => {
+                    try {
+                        const p = await Patient.findOne({ phone: From });
+                        if (p && p.last_message_received_at) {
+                            const hours = (Date.now() - new Date(p.last_message_received_at).getTime()) / (1000 * 60 * 60);
+                            // If they haven't sent another message (meaning it's exactly ~23.75h since the message that spawned this timer)
+                            if (hours >= 23.74 && hours < 24) {
+                                console.log(`[Webhook Timer] 24h window closing for ${From}, sending warning.`);
+                                const response = await sendWhatsAppMessage(
+                                    From,
+                                    customer.name,
+                                    'General',
+                                    business._id,
+                                    'Thanks for reaching out! Hope you were satisfied with the answer. If there is any need, please leave a message which will allow us to reach you back ASAP.'
+                                );
+                                await Message.create({
+                                    customer_id: customer._id,
+                                    business_id: business._id,
+                                    direction: 'outbound',
+                                    message_type: 'text',
+                                    status: 'sent',
+                                    content: 'Thanks for reaching out! Hope you were satisfied with the answer. If there is any need, please leave a message which will allow us to reach you back ASAP.',
+                                    whatsapp_message_id: response?.sid
+                                });
+                            }
+                        }
+                    } catch (err) {
+                        console.error("[Webhook Timer Error]", err);
+                    }
+                }, timeoutMs);
+
+                // Send Auto-Reply if it's their first message or > 48 hours since their last message
+                // Note: We check this before the STOP command logic. If they said STOP, they'll opt out anyway.
+                // But typically STOP shouldn't trigger an auto reply, so let's check it.
+                let isStopCommand = false;
+                if (messageObj.type === 'text' && messageObj.text?.body?.trim().toUpperCase() === 'STOP') {
+                    isStopCommand = true;
+                }
+
+                if (hoursSinceLastMessage > 48 && !isStopCommand) {
+                    try {
+                        const response = await sendWhatsAppMessage(
+                            From, 
+                            customer.name, 
+                            'General', 
+                            business._id, 
+                            undefined, 
+                            'auto_reply_hello'
+                        );
+
+                        await Message.create({
+                            customer_id: customer._id,
+                            business_id: business._id,
+                            direction: 'outbound',
+                            message_type: 'template',
+                            status: 'sent',
+                            content: 'auto_reply_hello',
+                            whatsapp_message_id: response?.sid
+                        });
+                    } catch (e) {
+                        console.error('[Webhook] Failed to send auto reply', e);
+                    }
+                }
                 // 3. Handle Text Messages & Auto-replies
                 if (messageObj.type === 'text' && messageObj.text?.body) {
                     const Body = messageObj.text.body;
@@ -360,32 +426,6 @@ export const webhook = async (req: Request, res: Response) => {
                             content: Body,
                             whatsapp_message_id: messageObj.id
                         });
-
-                        // Only send Auto-Reply if it's been more than 24 hours since we last spoke
-                        if (hoursSinceLastInteraction > 24) {
-                            try {
-                                const response = await sendWhatsAppMessage(
-                                    From, 
-                                    customer.name, 
-                                    'General', 
-                                    business._id, 
-                                    undefined, 
-                                    'auto_reply_hello' // We will intercept this in whatsappService!
-                                );
-
-                                await Message.create({
-                                    customer_id: customer._id,
-                                    business_id: business._id,
-                                    direction: 'outbound',
-                                    message_type: 'template',
-                                    status: 'sent',
-                                    content: 'auto_reply_hello',
-                                    whatsapp_message_id: response?.sid
-                                });
-                            } catch (e) {
-                                console.error('[Webhook] Failed to send auto reply', e);
-                            }
-                        }
                     }
                 } 
                 // 4. Handle Incoming Media (Images, Documents, Audio)

@@ -109,6 +109,23 @@ export default function InboxPage() {
         return hours < 24;
     };
 
+    const handleEditName = async () => {
+        if (!selectedChat) return;
+        const newName = window.prompt("Enter patient name:", selectedChat.name === 'Unknown Patient' ? '' : selectedChat.name);
+        if (newName && newName.trim()) {
+            try {
+                const res = await api.put(`/chats/${selectedChat._id}/name`, { name: newName.trim() });
+                // Update local state
+                setSelectedChat({ ...selectedChat, name: res.data.name });
+                setChats(prevChats => prevChats.map(c => 
+                    c._id === selectedChat._id ? { ...c, name: res.data.name } : c
+                ));
+            } catch (error) {
+                alert("Failed to update name");
+            }
+        }
+    };
+
     return (
         <div className="flex h-[calc(100vh-80px)] bg-gray-100 rounded-xl overflow-hidden shadow-sm border border-gray-200">
             {/* Sidebar List */}
@@ -176,7 +193,10 @@ export default function InboxPage() {
                                     {selectedChat.name.charAt(0).toUpperCase()}
                                 </div>
                                 <div>
-                                    <h2 className="font-semibold text-gray-800">{selectedChat.name}</h2>
+                                    <div className="flex items-center gap-2">
+                                        <h2 className="font-semibold text-gray-800">{selectedChat.name}</h2>
+                                        <button onClick={handleEditName} className="text-blue-500 hover:text-blue-700 text-xs font-medium">Edit</button>
+                                    </div>
                                     <p className="text-xs text-gray-500">{selectedChat.phone}</p>
                                 </div>
                             </div>

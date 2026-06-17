@@ -67,6 +67,23 @@ export const getChatHistory = async (req: Request, res: Response) => {
     }
 };
 
+// @desc    Update customer name
+// @route   PUT /api/chats/:customerId/name
+// @access  Private
+export const updateCustomerName = async (req: Request, res: Response) => {
+    try {
+        const { customerId } = req.params;
+        const { name } = req.body;
+        if (!name) return res.status(400).json({ message: 'Name is required' });
+
+        const customer = await Customer.findByIdAndUpdate(customerId, { name }, { new: true });
+        res.status(200).json(customer);
+    } catch (error: any) {
+        console.error("Update Customer Name Error:", error);
+        res.status(500).json({ message: 'Failed to update name', error: error.message });
+    }
+};
+
 // @desc    Send a manual text reply to a customer
 // @route   POST /api/chats/reply
 // @access  Private

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Send, Image as ImageIcon, FileText, Check, CheckCheck, Clock, Download, User, Trash2, Video } from 'lucide-react';
+import { Search, Send, Image as ImageIcon, FileText, Check, CheckCheck, Clock, Download, User, Trash2, Video, ArrowLeft } from 'lucide-react';
 import api from '@/app/lib/api';
 
 export default function InboxPage() {
@@ -179,9 +179,9 @@ export default function InboxPage() {
     };
 
     return (
-        <div className="flex h-[calc(100vh-80px)] bg-gray-100 rounded-xl overflow-hidden shadow-sm border border-gray-200">
+        <div className="flex h-[calc(100vh-64px)] md:h-[calc(100vh-80px)] -m-4 md:m-0 bg-gray-100 overflow-hidden">
             {/* Sidebar List */}
-            <div className="w-1/3 bg-white border-r border-gray-200 flex flex-col">
+            <div className={`bg-white border-r border-gray-200 flex-col w-full md:w-1/3 ${selectedChat ? 'hidden md:flex' : 'flex'}`}>
                 <div className="p-4 border-b border-gray-200 bg-gray-50">
                     <h2 className="text-lg font-bold text-gray-800 mb-3">Chats</h2>
                     <div className="relative">
@@ -206,7 +206,7 @@ export default function InboxPage() {
                             <div 
                                 key={chat._id} 
                                 onClick={() => setSelectedChat(chat)}
-                                className={`p-4 border-b border-gray-100 cursor-pointer transition hover:bg-gray-50 flex gap-3 ${selectedChat?._id === chat._id ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''}`}
+                                className={`p-4 border-b border-gray-100 cursor-pointer transition hover:bg-gray-50 flex gap-3 ${selectedChat?._id === chat._id ? 'bg-blue-50 md:border-l-4 md:border-l-blue-500' : ''}`}
                             >
                                 <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold shrink-0">
                                     {chat.name.charAt(0).toUpperCase()}
@@ -235,21 +235,28 @@ export default function InboxPage() {
             </div>
 
             {/* Chat Thread */}
-            <div className="flex-1 flex flex-col bg-[#efeae2]">
+            <div className={`flex-1 flex flex-col bg-[#efeae2] ${selectedChat ? 'flex' : 'hidden md:flex'}`}>
                 {selectedChat ? (
                     <>
                         {/* Chat Header */}
-                        <div className="h-16 px-6 bg-white border-b border-gray-200 flex items-center justify-between shadow-sm z-10">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">
+                        <div className="h-16 px-4 md:px-6 bg-white border-b border-gray-200 flex items-center justify-between shadow-sm z-10">
+                            <div className="flex items-center gap-2 md:gap-3">
+                                {/* Mobile Back Button */}
+                                <button 
+                                    onClick={() => setSelectedChat(null)}
+                                    className="md:hidden p-2 -ml-2 text-gray-600 hover:bg-gray-100 rounded-full transition"
+                                >
+                                    <ArrowLeft className="w-5 h-5" />
+                                </button>
+                                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold shrink-0">
                                     {selectedChat.name.charAt(0).toUpperCase()}
                                 </div>
-                                <div>
+                                <div className="min-w-0">
                                     <div className="flex items-center gap-2">
-                                        <h2 className="font-semibold text-gray-800">{selectedChat.name}</h2>
-                                        <button onClick={handleEditName} className="text-blue-500 hover:text-blue-700 text-xs font-medium">Edit</button>
+                                        <h2 className="font-semibold text-gray-800 truncate">{selectedChat.name}</h2>
+                                        <button onClick={handleEditName} className="text-blue-500 hover:text-blue-700 text-xs font-medium shrink-0">Edit</button>
                                     </div>
-                                    <p className="text-xs text-gray-500">{selectedChat.phone}</p>
+                                    <p className="text-xs text-gray-500 truncate">{selectedChat.phone}</p>
                                 </div>
                             </div>
                             <div className="flex items-center gap-4">

@@ -158,3 +158,79 @@ export const sendWhatsAppMessage = async (phone: string, name: string, service_t
       throw error;
   }
 };
+
+import FormData from 'form-data';
+
+export const sendWhatsAppMedia = async (phone: string, fileBuffer: Buffer, mimeType: string, filename: string, caption?: string) => {
+    // Ensure Phone is purely numeric
+    const cleanPhone = phone.replace('+', '').replace(/\s/g, '').replace(/[^0-9]/g, '');
+
+    if (!META_API_TOKEN || !META_PHONE_NUMBER_ID) {
+        throw new Error("Missing Meta API configurations.");
+    }
+
+    try {
+        // Step 1: Upload media to Meta
+        console.log(`[Meta API] Uploading media to Meta servers...`);
+        const form = new FormData();
+        form.append('messaging_product', 'whatsapp');
+        form.append('file', fileBuffer, { filename, contentType: mimeType });
+
+        const uploadUrl = `https://graph.facebook.com/v25.0/${META_PHONE_NUMBER_ID}/media`;
+        const uploadResponse = await axios.post(uploadUrl, form, {
+            headers: {
+                'Authorization': `Bearer ${META_API_TOKEN}`,
+                ...form.getHeaders()
+            }
+        });
+
+        const metaMediaId = uploadResponse.data.id;
+        console.log(`[Meta API] Upload successful! Media ID: ${metaMediaId}`);
+
+        // Step 2: Send message with the Media ID
+        const messageUrl = `https://graph.facebook.com/v25.0/${META_PHONE_NUMBER_ID}/messages`;
+        
+        let messageType = 'document';
+        if (mimeType.startsWith('image/')) messageType = 'image';
+        else if (mimeType.startsWith('video/')) messageType = 'video';
+        else if (mimeType.startsWith('audio/')) messageType = 'audio';
+
+        const payload: any = {
+            messaging_product: "whatsapp",
+            recipient_type: "individual",
+            to: cleanPhone,
+            type: messageType,
+            [messageType]: {
+                id: metaMediaId,
+            }
+        };
+
+        if (caption && (messageType === 'image' || messageType === 'video' || messageType === 'document')) {
+            payload[messageType].caption = caption;
+        }
+        
+        // For documents, it's highly recommended to provide a filename
+        if (messageType === 'document') {
+             payload[messageType].filename = filename;
+        }
+
+        console.log(`[Meta API] Dispatching media message to ${cleanPhone}...`);
+        const sendResponse = await axios.post(messageUrl, payload, {
+            headers: {
+                'Authorization': `Bearer ${META_API_TOKEN}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        console.log(`[Meta API] Media message sent! SID: ${sendResponse.data.messages?.[0]?.id}`);
+        return { 
+            sid: sendResponse.data.messages?.[0]?.id,
+            metaMediaId,
+            messageType
+        };
+
+    } catch (error: any) {
+        console.error(`[Meta API Media] Failed: ${JSON.stringify(error.response?.data || error.message)}`);
+        throw error;
+    }
+};

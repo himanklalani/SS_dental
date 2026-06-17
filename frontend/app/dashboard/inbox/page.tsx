@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Send, Image as ImageIcon, FileText, Check, CheckCheck, Clock, Download, User, Trash2, Video, ArrowLeft } from 'lucide-react';
+import { Search, Send, Image as ImageIcon, FileText, Check, CheckCheck, Clock, Download, User, Trash2, Video, ArrowLeft, Paperclip, X } from 'lucide-react';
 import api from '@/app/lib/api';
 
 export default function InboxPage() {
@@ -12,6 +12,8 @@ export default function InboxPage() {
     const [loading, setLoading] = useState(true);
     const [sending, setSending] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [searchQuery, setSearchQuery] = useState("");
 
     const [showUnreadOnly, setShowUnreadOnly] = useState(false);
@@ -82,20 +84,49 @@ export default function InboxPage() {
         }
     };
 
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
+            const MAX_SIZE = 16 * 1024 * 1024; // 16MB limit for Meta API generally
+            if (file.size > MAX_SIZE) {
+                alert("File size exceeds 16MB limit.");
+                return;
+            }
+            setSelectedFile(file);
+        }
+    };
+
     const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!newMessage.trim() || !selectedChat) return;
+        if ((!newMessage.trim() && !selectedFile) || !selectedChat) return;
 
         setSending(true);
         try {
-            const res = await api.post('/chats/reply', {
-                business_id: businessId,
-                customer_id: selectedChat._id,
-                text: newMessage.trim()
-            });
+            let res;
+            if (selectedFile) {
+                const formData = new FormData();
+                formData.append('business_id', businessId);
+                formData.append('customer_id', selectedChat._id);
+                formData.append('file', selectedFile);
+                if (newMessage.trim()) {
+                    formData.append('caption', newMessage.trim());
+                }
+
+                res = await api.post('/chats/media-reply', formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+            } else {
+                res = await api.post('/chats/reply', {
+                    business_id: businessId,
+                    customer_id: selectedChat._id,
+                    text: newMessage.trim()
+                });
+            }
             
             setMessages(prev => [...prev, res.data.data]);
             setNewMessage("");
+            setSelectedFile(null);
+            if (fileInputRef.current) fileInputRef.current.value = "";
             
             // Update the last message in the chat list
             setChats(prevChats => prevChats.map(c => {
@@ -429,16 +460,52 @@ export default function InboxPage() {
                         </div>
 
                         {/* Input Area */}
-                        <div className="p-4 bg-[#f0f2f5]">
+                        <div className="p-4 bg-[#f0f2f5] flex flex-col gap-2 relative">
                             {!isWindowOpen() && (
-                                <div className="mb-3 text-center bg-yellow-50 text-yellow-800 text-xs py-2 px-4 rounded-lg border border-yellow-200">
+                                <div className="text-center bg-yellow-50 text-yellow-800 text-xs py-2 px-4 rounded-lg border border-yellow-200">
                                     The 24-hour service window has closed. You cannot send free-form text. Please use the Broadcast tool to send a pre-approved template first.
                                 </div>
                             )}
+
+                            {selectedFile && (
+                                <div className="absolute bottom-full left-4 mb-2 bg-white rounded-lg shadow-lg border border-gray-200 p-3 flex items-center gap-3 w-max max-w-[80vw]">
+                                    <div className="w-10 h-10 bg-blue-100 rounded flex items-center justify-center shrink-0">
+                                        <FileText className="w-5 h-5 text-blue-600" />
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                        <p className="text-sm font-semibold text-gray-800 truncate">{selectedFile.name}</p>
+                                        <p className="text-xs text-gray-500">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                                    </div>
+                                    <button 
+                                        type="button"
+                                        onClick={() => { setSelectedFile(null); if(fileInputRef.current) fileInputRef.current.value = ""; }}
+                                        className="p-1 hover:bg-gray-100 rounded-full text-gray-500"
+                                    >
+                                        <X className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            )}
+
                             <form onSubmit={handleSendMessage} className="flex items-center gap-2">
+                                <input 
+                                    type="file" 
+                                    className="hidden" 
+                                    ref={fileInputRef} 
+                                    onChange={handleFileChange}
+                                    accept="image/*,video/*,.pdf,.csv,.xlsx,.xls"
+                                    disabled={!isWindowOpen() || sending}
+                                />
+                                <button 
+                                    type="button"
+                                    disabled={!isWindowOpen() || sending}
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className="p-3 text-gray-500 hover:bg-gray-200 rounded-full transition disabled:opacity-50 flex items-center justify-center"
+                                >
+                                    <Paperclip className="w-6 h-6" />
+                                </button>
                                 <input
                                     type="text"
-                                    placeholder={isWindowOpen() ? "Type a message..." : "Window closed. Cannot send manual messages."}
+                                    placeholder={isWindowOpen() ? (selectedFile ? "Add a caption..." : "Type a message...") : "Window closed. Cannot send manual messages."}
                                     className="flex-1 bg-white border-none rounded-full px-5 py-3 outline-none focus:ring-2 focus:ring-blue-500 shadow-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
                                     value={newMessage}
                                     onChange={(e) => setNewMessage(e.target.value)}
@@ -446,7 +513,7 @@ export default function InboxPage() {
                                 />
                                 <button 
                                     type="submit"
-                                    disabled={!newMessage.trim() || !isWindowOpen() || sending}
+                                    disabled={(!newMessage.trim() && !selectedFile) || !isWindowOpen() || sending}
                                     className="w-12 h-12 bg-blue-600 hover:bg-blue-700 text-white rounded-full flex items-center justify-center transition disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
                                 >
                                     {sending ? (

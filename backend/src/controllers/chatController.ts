@@ -5,7 +5,7 @@ import Customer from '../models/Customer';
 import Patient from '../models/Patient';
 import Message from '../models/Message';
 import Business from '../models/Business';
-import { sendWhatsAppMessage } from '../services/whatsappService';
+import { sendWhatsAppMessage, sendWhatsAppMedia } from '../services/whatsappService';
 
 // @desc    Get list of active chats (patients who have messaged or been messaged)
 // @route   GET /api/chats
@@ -207,5 +207,68 @@ export const getMediaUrl = async (req: Request, res: Response) => {
     } catch (error: any) {
         console.error("Get Media Error:", error.response?.data || error.message);
         res.status(500).json({ message: 'Failed to fetch media', error: error.message });
+    }
+};
+
+// @desc    Send a media reply (image, pdf, video) to a customer
+// @route   POST /api/chats/media-reply
+// @access  Private
+export const sendMediaReply = async (req: Request, res: Response) => {
+    try {
+        const { business_id, customer_id, caption } = req.body;
+        const file = req.file;
+
+        if (!business_id || !customer_id || !file) {
+            return res.status(400).json({ message: 'Missing required fields or file' });
+        }
+
+        const customer = await Customer.findById(customer_id);
+        if (!customer) return res.status(404).json({ message: 'Customer not found' });
+
+        // Ensure we are within the 24-hour window
+        let windowIsOpen = false;
+        const dbPhone = customer.phone.startsWith('+') ? customer.phone : '+' + customer.phone.replace(/[^0-9]/g, '');
+        const patient = await Patient.findOne({ phone: dbPhone });
+        
+        const lastMessageTime = patient?.last_message_received_at || customer.last_interaction;
+        if (lastMessageTime) {
+            const hoursSinceLastMessage = (Date.now() - new Date(lastMessageTime).getTime()) / (1000 * 60 * 60);
+            if (hoursSinceLastMessage < 24) {
+                windowIsOpen = true;
+            }
+        }
+
+        if (!windowIsOpen) {
+            return res.status(400).json({ 
+                message: '24-hour service window has closed. You can only send pre-approved templates.',
+                windowClosed: true 
+            });
+        }
+
+        // Send Media via WhatsApp Service
+        const response = await sendWhatsAppMedia(
+            customer.phone,
+            file.buffer,
+            file.mimetype,
+            file.originalname,
+            caption
+        );
+
+        // Save as outbound message
+        const message = await Message.create({
+            customer_id: customer._id,
+            business_id: business_id,
+            direction: 'outbound',
+            message_type: response.messageType,
+            status: 'sent',
+            content: caption || '',
+            media_id: response.metaMediaId,
+            whatsapp_message_id: response.sid
+        });
+
+        res.status(200).json({ message: 'Media sent', data: message });
+    } catch (error: any) {
+        console.error("Send Media Reply Error:", error.response?.data || error);
+        res.status(500).json({ message: 'Failed to send media', error: error.response?.data?.error?.message || error.message });
     }
 };

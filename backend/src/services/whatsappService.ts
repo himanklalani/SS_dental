@@ -174,7 +174,11 @@ export const sendWhatsAppMedia = async (phone: string, fileBuffer: Buffer, mimeT
         console.log(`[Meta API] Uploading media to Meta servers...`);
         const form = new FormData();
         form.append('messaging_product', 'whatsapp');
-        form.append('file', fileBuffer, { filename, contentType: mimeType });
+        form.append('file', fileBuffer, { 
+            filename, 
+            contentType: mimeType,
+            knownLength: fileBuffer.length
+        });
 
         const uploadUrl = `https://graph.facebook.com/v25.0/${META_PHONE_NUMBER_ID}/media`;
         const uploadResponse = await axios.post(uploadUrl, form, {

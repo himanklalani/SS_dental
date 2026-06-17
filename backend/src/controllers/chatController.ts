@@ -254,6 +254,8 @@ export const sendMediaReply = async (req: Request, res: Response) => {
             caption
         );
 
+        let fallbackContent = `[${response.messageType.charAt(0).toUpperCase() + response.messageType.slice(1)} Attached]`;
+
         // Save as outbound message
         const message = await Message.create({
             customer_id: customer._id,
@@ -261,7 +263,7 @@ export const sendMediaReply = async (req: Request, res: Response) => {
             direction: 'outbound',
             message_type: response.messageType,
             status: 'sent',
-            content: caption || '',
+            content: caption ? caption : fallbackContent,
             media_id: response.metaMediaId,
             whatsapp_message_id: response.sid
         });

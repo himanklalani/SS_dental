@@ -58,8 +58,8 @@ export default function InboxPage() {
     };
 
     useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages]);
+        messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+    }, [selectedChat?._id, messages.length]);
 
     const fetchChats = async () => {
         try {
@@ -180,12 +180,13 @@ export default function InboxPage() {
     const handleDownloadChat = () => {
         if (!selectedChat || messages.length === 0) return;
         
-        let txtContent = `WhatsApp Chat History with ${selectedChat.name} (${selectedChat.phone})\n`;
+        const displayName = selectedChat.name === 'Unknown Patient' ? selectedChat.phone : selectedChat.name;
+        let txtContent = `WhatsApp Chat History with ${displayName} (${selectedChat.phone})\n`;
         txtContent += `Exported on: ${new Date().toLocaleString()}\n\n`;
         
         messages.forEach(msg => {
             const time = new Date(msg.createdAt).toLocaleString();
-            const sender = msg.direction === 'inbound' ? selectedChat.name : 'Clinic';
+            const sender = msg.direction === 'inbound' ? displayName : 'Clinic';
             const content = msg.message_type === 'image' ? '[Image/Media attached]' : msg.content;
             txtContent += `[${time}] ${sender}: ${content}\n`;
         });
@@ -194,7 +195,7 @@ export default function InboxPage() {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `chat_history_${selectedChat.name.replace(/\s+/g, '_')}.txt`;
+        a.download = `chat_history_${displayName.replace(/\s+/g, '_')}.txt`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -245,6 +246,9 @@ export default function InboxPage() {
                     ) : (
                         filteredChats.map((chat) => {
                             const unread = isUnread(chat);
+                            const displayName = chat.name === 'Unknown Patient' ? chat.phone : chat.name;
+                            const initial = chat.name === 'Unknown Patient' ? '#' : chat.name.charAt(0).toUpperCase();
+
                             return (
                                 <div 
                                     key={chat._id} 
@@ -252,12 +256,12 @@ export default function InboxPage() {
                                     className={`p-4 border-b border-gray-100 cursor-pointer transition hover:bg-gray-50 flex gap-3 ${selectedChat?._id === chat._id ? 'bg-blue-50 md:border-l-4 md:border-l-blue-500' : ''}`}
                                 >
                                     <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold shrink-0 text-lg">
-                                        {chat.name.charAt(0).toUpperCase()}
+                                        {initial}
                                     </div>
                                     <div className="flex-1 min-w-0 flex flex-col justify-center">
                                         <div className="flex justify-between items-center mb-1">
                                             <h3 className={`text-sm truncate ${unread ? 'font-bold text-gray-900' : 'font-semibold text-gray-800'}`}>
-                                                {chat.name}
+                                                {displayName}
                                             </h3>
                                             {chat.latestMessage && (
                                                 <span className={`text-xs whitespace-nowrap ml-2 ${unread ? 'text-green-600 font-bold' : 'text-gray-400'}`}>
@@ -302,11 +306,13 @@ export default function InboxPage() {
                                     <ArrowLeft className="w-5 h-5" />
                                 </button>
                                 <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold shrink-0">
-                                    {selectedChat.name.charAt(0).toUpperCase()}
+                                    {selectedChat.name === 'Unknown Patient' ? '#' : selectedChat.name.charAt(0).toUpperCase()}
                                 </div>
                                 <div className="min-w-0">
                                     <div className="flex items-center gap-2">
-                                        <h2 className="font-semibold text-gray-800 truncate">{selectedChat.name}</h2>
+                                        <h2 className="font-semibold text-gray-800 truncate">
+                                            {selectedChat.name === 'Unknown Patient' ? selectedChat.phone : selectedChat.name}
+                                        </h2>
                                         <button onClick={handleEditName} className="text-blue-500 hover:text-blue-700 text-xs font-medium shrink-0">Edit</button>
                                     </div>
                                     <p className="text-xs text-gray-500 truncate">{selectedChat.phone}</p>

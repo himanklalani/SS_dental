@@ -18,7 +18,8 @@ export default function BroadcastsPage() {
     ];
     const [selectedTemplate, setSelectedTemplate] = useState(templates[0].id);
 
-    const businessId = typeof window !== 'undefined' ? localStorage.getItem('business_id') || "" : "";
+    // Use the environment variable for businessId to match other pages
+    const [businessId] = useState(process.env.NEXT_PUBLIC_BUSINESS_ID || '69edf7401e9164e3fd73e073');
 
     useEffect(() => {
         if (businessId) {

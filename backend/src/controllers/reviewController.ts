@@ -322,6 +322,7 @@ export const webhook = async (req: Request, res: Response) => {
                     customer = await Customer.create({
                         name: messageObj.profile?.name || 'Unknown Patient',
                         phone: From,
+                        service_type: 'General', // Added required field
                         business_id: business._id
                     });
                 }

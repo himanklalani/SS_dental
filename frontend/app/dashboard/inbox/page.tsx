@@ -26,8 +26,22 @@ export default function InboxPage() {
     useEffect(() => {
         if (selectedChat) {
             fetchMessages(selectedChat._id);
+            // Polling for real-time blue tick & new message updates
+            const interval = setInterval(() => {
+                fetchMessages(selectedChat._id);
+            }, 3000);
+            return () => clearInterval(interval);
         }
     }, [selectedChat]);
+
+    const getSpecificFileType = (msg: any) => {
+        if (msg.message_type !== 'document') return msg.message_type;
+        const lowerContent = msg.content.toLowerCase();
+        if (lowerContent.endsWith('.pdf')) return 'pdf';
+        if (lowerContent.endsWith('.csv')) return 'csv';
+        if (lowerContent.endsWith('.xlsx') || lowerContent.endsWith('.xls')) return 'excel';
+        return 'document';
+    };
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -315,7 +329,7 @@ export default function InboxPage() {
                                                     {/* Universal Download Button for ALL media */}
                                                     <div className="flex items-center justify-between mt-2">
                                                         <span className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold bg-white/50 px-2 py-1 rounded">
-                                                            {msg.message_type} File
+                                                            {getSpecificFileType(msg)} File
                                                         </span>
                                                         <a 
                                                             href={`/api/chats/media/${msg.media_id}`} 
@@ -329,8 +343,11 @@ export default function InboxPage() {
                                                 </div>
                                             )}
 
-                                            {/* Only show text if it's not the generic fallback */}
-                                            {msg.content && msg.content !== `Received a ${msg.message_type}` && (
+                                            {/* Only show text if it's not the generic fallback OR the exact filename */}
+                                            {msg.content && 
+                                             msg.content !== `Received a ${msg.message_type}` && 
+                                             msg.content !== `Received a ${getSpecificFileType(msg)}` &&
+                                             (!msg.media_id || !msg.content.toLowerCase().match(/\.(pdf|csv|xlsx|xls|jpg|png|mp4)$/)) && (
                                                 <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
                                             )}
                                             

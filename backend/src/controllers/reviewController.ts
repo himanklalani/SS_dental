@@ -393,6 +393,7 @@ export const webhook = async (req: Request, res: Response) => {
                     const mediaObj = messageObj[messageObj.type];
                     const mediaId = mediaObj?.id;
                     const caption = mediaObj?.caption || '';
+                    const filename = mediaObj?.filename || ''; // Meta sends filename for documents
 
                     if (mediaId) {
                         console.log(`[Webhook] Received media from ${From}: ${mediaId}`);
@@ -402,7 +403,7 @@ export const webhook = async (req: Request, res: Response) => {
                             direction: 'inbound',
                             message_type: messageObj.type,
                             status: 'received',
-                            content: caption || `Received a ${messageObj.type}`,
+                            content: caption || filename || `Received a ${messageObj.type}`,
                             media_id: mediaId,
                             whatsapp_message_id: messageObj.id
                         });

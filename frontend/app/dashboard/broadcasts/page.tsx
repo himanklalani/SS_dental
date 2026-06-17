@@ -18,7 +18,7 @@ export default function BroadcastsPage() {
     ];
     const [selectedTemplate, setSelectedTemplate] = useState(templates[0].id);
 
-    const businessId = localStorage.getItem('business_id') || "";
+    const businessId = typeof window !== 'undefined' ? localStorage.getItem('business_id') || "" : "";
 
     useEffect(() => {
         if (businessId) {

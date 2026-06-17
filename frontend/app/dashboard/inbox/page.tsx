@@ -15,7 +15,7 @@ export default function InboxPage() {
     const [searchQuery, setSearchQuery] = useState("");
 
     // Assuming a single business context for this clinic setup
-    const businessId = localStorage.getItem('business_id') || "";
+    const businessId = typeof window !== 'undefined' ? localStorage.getItem('business_id') || "" : "";
 
     useEffect(() => {
         if (businessId) {

@@ -7,6 +7,23 @@ import Doctor from '../models/Doctor';
 import { queueReviewRequest } from '../services/queueService';
 import Appointment from '../models/Appointment';
 import { sendWhatsAppMessage } from '../services/whatsappService';
+import axios from 'axios';
+
+// Helper function to send instant notifications to the ntfy app
+const sendNtfyNotification = async (customerName: string, messagePreview: string) => {
+    try {
+        const topic = process.env.NTFY_TOPIC || 'srs_dental_inbox_xyz123';
+        await axios.post(`https://ntfy.sh/${topic}`, messagePreview, {
+            headers: {
+                'Title': `New message from ${customerName}`,
+                'Priority': 'default',
+                'Tags': 'speech_balloon'
+            }
+        });
+    } catch (err) {
+        console.error('[Ntfy] Failed to send notification', err);
+    }
+};
 
 // @desc    Track review link click and redirect
 // @route   GET /api/r/:appointmentId
@@ -434,6 +451,9 @@ export const webhook = async (req: Request, res: Response) => {
                             whatsapp_message_id: messageObj.id,
                             context_message_id: messageObj.context?.id
                         });
+                        
+                        // Send notification
+                        sendNtfyNotification(customer.name, Body);
                     }
                 } 
                 // 4. Handle Incoming Media (Images, Documents, Audio)
@@ -445,17 +465,21 @@ export const webhook = async (req: Request, res: Response) => {
 
                     if (mediaId) {
                         console.log(`[Webhook] Received media from ${From}: ${mediaId}`);
+                        const contentStr = caption || filename || `Received a ${messageObj.type}`;
                         await Message.create({
                             customer_id: customer._id,
                             business_id: business._id,
                             direction: 'inbound',
                             message_type: messageObj.type,
                             status: 'received',
-                            content: caption || filename || `Received a ${messageObj.type}`,
+                            content: contentStr,
                             media_id: mediaId,
                             whatsapp_message_id: messageObj.id,
                             context_message_id: messageObj.context?.id
                         });
+
+                        // Send notification
+                        sendNtfyNotification(customer.name, contentStr);
                     }
                 }
                 // 5. Handle Button Clicks (Quick Replies)
@@ -463,31 +487,39 @@ export const webhook = async (req: Request, res: Response) => {
                     const buttonText = messageObj.button?.text;
                     console.log(`[Webhook] User ${From} clicked button: ${buttonText}`);
                     
+                    const contentStr = buttonText || 'Button clicked';
                     await Message.create({
                         customer_id: customer._id,
                         business_id: business._id,
                         direction: 'inbound',
                         message_type: 'button',
                         status: 'received',
-                        content: buttonText || 'Button clicked',
+                        content: contentStr,
                         whatsapp_message_id: messageObj.id,
                         context_message_id: messageObj.context?.id
                     });
+
+                    // Send notification
+                    sendNtfyNotification(customer.name, contentStr);
                 }
                 else if (messageObj.type === 'interactive') {
                     const buttonReply = messageObj.interactive?.button_reply?.title;
                     console.log(`[Webhook] User ${From} clicked interactive button: ${buttonReply}`);
                     
+                    const contentStr = buttonReply || 'Interactive button clicked';
                     await Message.create({
                         customer_id: customer._id,
                         business_id: business._id,
                         direction: 'inbound',
                         message_type: 'interactive',
                         status: 'received',
-                        content: buttonReply || 'Interactive button clicked',
+                        content: contentStr,
                         whatsapp_message_id: messageObj.id,
                         context_message_id: messageObj.context?.id
                     });
+
+                    // Send notification
+                    sendNtfyNotification(customer.name, contentStr);
                 }
             }
         }

@@ -17,12 +17,16 @@ export default function InboxPage() {
     const [showUnreadOnly, setShowUnreadOnly] = useState(false);
     const [localReadReceipts, setLocalReadReceipts] = useState<Record<string, boolean>>({});
 
-    // Use the environment variable for businessId to match other pages
     const [businessId] = useState(process.env.NEXT_PUBLIC_BUSINESS_ID || '69edf7401e9164e3fd73e073');
 
     useEffect(() => {
         if (businessId) {
             fetchChats();
+            // Global polling for the sidebar to catch new inbound messages
+            const globalInterval = setInterval(() => {
+                fetchChats();
+            }, 5000);
+            return () => clearInterval(globalInterval);
         }
     }, [businessId]);
 
@@ -198,7 +202,7 @@ export default function InboxPage() {
     };
 
     return (
-        <div className="flex h-[calc(100dvh-64px)] md:h-[calc(100vh-80px)] -m-4 md:m-0 bg-gray-100 overflow-hidden">
+        <div className="fixed inset-x-0 bottom-0 top-[64px] md:relative md:top-auto md:inset-auto flex md:h-[calc(100vh-80px)] bg-gray-100 overflow-hidden z-40">
             {/* Sidebar List */}
             <div className={`bg-white border-r border-gray-200 flex-col w-full md:w-1/3 ${selectedChat ? 'hidden md:flex' : 'flex'}`}>
                 <div className="p-4 border-b border-gray-200 bg-gray-50 flex flex-col gap-3">
@@ -247,13 +251,10 @@ export default function InboxPage() {
                                     onClick={() => setSelectedChat(chat)}
                                     className={`p-4 border-b border-gray-100 cursor-pointer transition hover:bg-gray-50 flex gap-3 ${selectedChat?._id === chat._id ? 'bg-blue-50 md:border-l-4 md:border-l-blue-500' : ''}`}
                                 >
-                                    <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold shrink-0 relative">
+                                    <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold shrink-0 text-lg">
                                         {chat.name.charAt(0).toUpperCase()}
-                                        {unread && (
-                                            <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-green-500 border-2 border-white rounded-full"></span>
-                                        )}
                                     </div>
-                                    <div className="flex-1 min-w-0">
+                                    <div className="flex-1 min-w-0 flex flex-col justify-center">
                                         <div className="flex justify-between items-center mb-1">
                                             <h3 className={`text-sm truncate ${unread ? 'font-bold text-gray-900' : 'font-semibold text-gray-800'}`}>
                                                 {chat.name}
@@ -264,12 +265,19 @@ export default function InboxPage() {
                                                 </span>
                                             )}
                                         </div>
-                                        <div className={`text-xs truncate ${unread ? 'text-gray-800 font-medium' : 'text-gray-500'}`}>
-                                            {chat.latestMessage ? (
-                                                chat.latestMessage.message_type === 'image' ? '📷 Image' : 
-                                                chat.latestMessage.message_type === 'template' ? '📄 Template Sent' :
-                                                chat.latestMessage.content
-                                            ) : 'No messages yet'}
+                                        <div className="flex justify-between items-center">
+                                            <div className={`text-xs truncate ${unread ? 'text-gray-800 font-medium' : 'text-gray-500'}`}>
+                                                {chat.latestMessage ? (
+                                                    chat.latestMessage.message_type === 'image' ? '📷 Image' : 
+                                                    chat.latestMessage.message_type === 'template' ? '📄 Template Sent' :
+                                                    chat.latestMessage.content
+                                                ) : 'No messages yet'}
+                                            </div>
+                                            {unread && (
+                                                <div className="w-5 h-5 bg-[#25D366] rounded-full flex items-center justify-center shrink-0 ml-2 shadow-sm">
+                                                    <span className="text-white text-[10px] font-bold">1</span>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 </div>

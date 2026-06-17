@@ -328,6 +328,11 @@ export const webhook = async (req: Request, res: Response) => {
                 }
 
                 // 2. Update 24-hour window timestamp for both Patient and Customer
+                const lastInteraction = customer.last_interaction;
+                const hoursSinceLastInteraction = lastInteraction 
+                    ? (Date.now() - new Date(lastInteraction).getTime()) / (1000 * 60 * 60) 
+                    : 25; // if never interacted, treat as > 24h
+                
                 await Patient.updateMany({ phone: From }, { last_message_received_at: new Date() });
                 customer.last_interaction = new Date();
                 await customer.save();
@@ -356,28 +361,30 @@ export const webhook = async (req: Request, res: Response) => {
                             whatsapp_message_id: messageObj.id
                         });
 
-                        // Send Auto-Reply (Free Form) if they reach out
-                        try {
-                            const response = await sendWhatsAppMessage(
-                                From, 
-                                customer.name, 
-                                'General', 
-                                business._id, 
-                                undefined, 
-                                'auto_reply_hello' // We will intercept this in whatsappService!
-                            );
+                        // Only send Auto-Reply if it's been more than 24 hours since we last spoke
+                        if (hoursSinceLastInteraction > 24) {
+                            try {
+                                const response = await sendWhatsAppMessage(
+                                    From, 
+                                    customer.name, 
+                                    'General', 
+                                    business._id, 
+                                    undefined, 
+                                    'auto_reply_hello' // We will intercept this in whatsappService!
+                                );
 
-                            await Message.create({
-                                customer_id: customer._id,
-                                business_id: business._id,
-                                direction: 'outbound',
-                                message_type: 'template',
-                                status: 'sent',
-                                content: 'auto_reply_hello',
-                                whatsapp_message_id: response?.sid
-                            });
-                        } catch (e) {
-                            console.error('[Webhook] Failed to send auto reply', e);
+                                await Message.create({
+                                    customer_id: customer._id,
+                                    business_id: business._id,
+                                    direction: 'outbound',
+                                    message_type: 'template',
+                                    status: 'sent',
+                                    content: 'auto_reply_hello',
+                                    whatsapp_message_id: response?.sid
+                                });
+                            } catch (e) {
+                                console.error('[Webhook] Failed to send auto reply', e);
+                            }
                         }
                     }
                 } 

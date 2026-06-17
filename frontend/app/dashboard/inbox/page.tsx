@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Send, Image as ImageIcon, FileText, Check, CheckCheck, Clock, Download, User } from 'lucide-react';
+import { Search, Send, Image as ImageIcon, FileText, Check, CheckCheck, Clock, Download, User, Trash2, Video } from 'lucide-react';
 import api from '@/app/lib/api';
 
 export default function InboxPage() {
@@ -126,6 +126,44 @@ export default function InboxPage() {
         }
     };
 
+    const handleDeleteChat = async () => {
+        if (!selectedChat) return;
+        if (!confirm(`Are you sure you want to delete the entire chat history with ${selectedChat.name}? This cannot be undone.`)) return;
+
+        try {
+            await api.delete(`/chats/${selectedChat._id}`);
+            setMessages([]);
+            setSelectedChat(null);
+            fetchChats(); // Refresh the sidebar
+        } catch (error) {
+            alert("Failed to delete chat history");
+        }
+    };
+
+    const handleDownloadChat = () => {
+        if (!selectedChat || messages.length === 0) return;
+        
+        let txtContent = `WhatsApp Chat History with ${selectedChat.name} (${selectedChat.phone})\n`;
+        txtContent += `Exported on: ${new Date().toLocaleString()}\n\n`;
+        
+        messages.forEach(msg => {
+            const time = new Date(msg.createdAt).toLocaleString();
+            const sender = msg.direction === 'inbound' ? selectedChat.name : 'Clinic';
+            const content = msg.message_type === 'image' ? '[Image/Media attached]' : msg.content;
+            txtContent += `[${time}] ${sender}: ${content}\n`;
+        });
+
+        const blob = new Blob([txtContent], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `chat_history_${selectedChat.name.replace(/\s+/g, '_')}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    };
+
     return (
         <div className="flex h-[calc(100vh-80px)] bg-gray-100 rounded-xl overflow-hidden shadow-sm border border-gray-200">
             {/* Sidebar List */}
@@ -200,7 +238,7 @@ export default function InboxPage() {
                                     <p className="text-xs text-gray-500">{selectedChat.phone}</p>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-4">
                                 {isWindowOpen() ? (
                                     <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full font-medium flex items-center gap-1">
                                         <span className="w-2 h-2 rounded-full bg-green-500"></span> Active Window
@@ -210,6 +248,24 @@ export default function InboxPage() {
                                         <Clock className="w-3 h-3" /> Window Closed
                                     </span>
                                 )}
+                                
+                                <div className="h-6 border-l border-gray-300"></div>
+
+                                <button 
+                                    onClick={handleDownloadChat}
+                                    title="Export Chat History"
+                                    className="text-gray-500 hover:text-blue-600 transition"
+                                >
+                                    <Download className="w-5 h-5" />
+                                </button>
+                                
+                                <button 
+                                    onClick={handleDeleteChat}
+                                    title="Delete Chat"
+                                    className="text-gray-500 hover:text-red-600 transition"
+                                >
+                                    <Trash2 className="w-5 h-5" />
+                                </button>
                             </div>
                         </div>
 
@@ -222,30 +278,56 @@ export default function InboxPage() {
                                         <div className={`max-w-[70%] rounded-xl px-4 py-2 shadow-sm relative ${isOutbound ? 'bg-[#d9fdd3] text-gray-800 rounded-tr-none' : 'bg-white text-gray-800 rounded-tl-none'}`}>
                                             
                                             {/* Media Rendering */}
-                                            {msg.message_type === 'image' && msg.media_id && (
+                                            {msg.media_id && (
                                                 <div className="mb-2">
-                                                    <div className="w-full h-40 bg-gray-200 rounded-lg flex items-center justify-center mb-2 overflow-hidden relative group">
-                                                        <ImageIcon className="w-8 h-8 text-gray-400" />
-                                                        <a 
-                                                            href={`${process.env.NEXT_PUBLIC_API_URL}/api/chats/media/${msg.media_id}`} 
-                                                            target="_blank" 
-                                                            download
-                                                            className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                                                        >
-                                                            <Download className="w-6 h-6 text-white" />
+                                                    {msg.message_type === 'image' && (
+                                                        <a href={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/chats/media/${msg.media_id}`} target="_blank" rel="noreferrer">
+                                                            <img 
+                                                                src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/chats/media/${msg.media_id}`} 
+                                                                alt="Sent Image" 
+                                                                className="w-full max-h-60 object-cover rounded-lg mb-1 border border-black/5"
+                                                            />
                                                         </a>
-                                                    </div>
+                                                    )}
+                                                    {msg.message_type === 'video' && (
+                                                        <video 
+                                                            src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/chats/media/${msg.media_id}`} 
+                                                            controls 
+                                                            className="w-full max-h-60 rounded-lg mb-1 border border-black/5"
+                                                        />
+                                                    )}
+                                                    {msg.message_type === 'audio' && (
+                                                        <audio 
+                                                            src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/chats/media/${msg.media_id}`} 
+                                                            controls 
+                                                            className="w-full mb-1"
+                                                        />
+                                                    )}
+                                                    {msg.message_type === 'document' && (
+                                                        <div className="flex items-center gap-3 bg-black/5 p-3 rounded-lg mb-1">
+                                                            <FileText className="w-8 h-8 text-blue-500" />
+                                                            <div className="flex-1 min-w-0">
+                                                                <p className="text-sm font-semibold truncate text-gray-700">Document File</p>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                    
+                                                    {/* Universal Download Button for ALL media */}
                                                     <a 
-                                                        href={`${process.env.NEXT_PUBLIC_API_URL}/api/chats/media/${msg.media_id}`} 
+                                                        href={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/chats/media/${msg.media_id}`} 
                                                         target="_blank" 
-                                                        className="text-xs text-blue-600 hover:underline flex items-center gap-1 mb-1"
+                                                        download
+                                                        className="text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1 mt-2 bg-blue-50 p-2 rounded w-fit"
                                                     >
-                                                        <Download className="w-3 h-3" /> Download Full Image
+                                                        <Download className="w-3 h-3" /> Download {msg.message_type}
                                                     </a>
                                                 </div>
                                             )}
 
-                                            <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                                            {/* Only show text if it's not the generic fallback */}
+                                            {msg.content && msg.content !== `Received a ${msg.message_type}` && (
+                                                <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                                            )}
                                             
                                             <div className={`text-[10px] mt-1 flex items-center gap-1 justify-end ${isOutbound ? 'text-gray-500' : 'text-gray-400'}`}>
                                                 {formatTime(msg.createdAt)}

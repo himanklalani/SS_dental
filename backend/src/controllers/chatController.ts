@@ -67,6 +67,20 @@ export const getChatHistory = async (req: Request, res: Response) => {
     }
 };
 
+// @desc    Delete chat history for a specific customer
+// @route   DELETE /api/chats/:customerId
+// @access  Private
+export const deleteChatHistory = async (req: Request, res: Response) => {
+    try {
+        const { customerId } = req.params;
+        await Message.deleteMany({ customer_id: customerId });
+        res.status(200).json({ message: 'Chat history deleted successfully' });
+    } catch (error: any) {
+        console.error("Delete Chat History Error:", error);
+        res.status(500).json({ message: 'Failed to delete chat history', error: error.message });
+    }
+};
+
 // @desc    Update customer name
 // @route   PUT /api/chats/:customerId/name
 // @access  Private
@@ -166,17 +180,18 @@ export const getMediaUrl = async (req: Request, res: Response) => {
         const downloadUrl = metaResponse.data.url;
         const mimeType = metaResponse.data.mime_type;
 
-        // 2. Fetch the actual binary data from the download URL
-        const mediaDownloadResponse = await axios.get(downloadUrl, {
+        // 2. Fetch the actual binary data securely
+        const mediaDownloadResponse = await axios({
+            method: 'get',
+            url: downloadUrl,
             headers: { 'Authorization': `Bearer ${META_API_TOKEN}` },
-            responseType: 'arraybuffer' // We need binary data to stream it back to the frontend
+            responseType: 'stream'
         });
 
-        // 3. Pipe it to the client
+        // 4. Send the file back to the frontend
         res.setHeader('Content-Type', mimeType);
-        res.setHeader('Content-Disposition', `attachment; filename="whatsapp-media-${mediaId}"`);
-        res.send(mediaDownloadResponse.data);
-
+        res.setHeader('Content-Disposition', `inline; filename="whatsapp-media-${mediaId}"`);
+        mediaDownloadResponse.data.pipe(res);
     } catch (error: any) {
         console.error("Get Media Error:", error.response?.data || error.message);
         res.status(500).json({ message: 'Failed to fetch media', error: error.message });

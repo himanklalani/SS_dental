@@ -4,7 +4,7 @@ export interface IMessage extends Document {
   customer_id: mongoose.Types.ObjectId;
   business_id: mongoose.Types.ObjectId;
   direction?: 'inbound' | 'outbound';
-  message_type?: 'text' | 'image' | 'document' | 'audio' | 'template' | 'interactive' | 'button';
+  message_type?: 'text' | 'image' | 'document' | 'audio' | 'video' | 'template' | 'interactive' | 'button';
   status: 'queued' | 'sent' | 'delivered' | 'read' | 'clicked' | 'completed' | 'failed' | 'received';
   content: string;
   media_id?: string;
@@ -26,7 +26,7 @@ const MessageSchema: Schema = new Schema({
   },
   message_type: { 
     type: String, 
-    enum: ['text', 'image', 'document', 'audio', 'template', 'interactive', 'button'],
+    enum: ['text', 'image', 'document', 'audio', 'video', 'template', 'interactive', 'button'],
     default: 'text'
   },
   status: { 

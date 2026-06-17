@@ -36,9 +36,10 @@ router.get('/business/:id', getBusiness);
 router.put('/business/:id', updateBusiness);
 
 // Chat & Inbox
-import { getChats, getChatHistory, getMediaUrl, sendManualReply, updateCustomerName } from '../controllers/chatController';
+import { getChats, getChatHistory, getMediaUrl, sendManualReply, updateCustomerName, deleteChatHistory } from '../controllers/chatController';
 router.get('/chats', getChats);
 router.get('/chats/:customerId', getChatHistory);
+router.delete('/chats/:customerId', deleteChatHistory);
 router.put('/chats/:customerId/name', updateCustomerName);
 router.get('/chats/media/:mediaId', getMediaUrl);
 router.post('/chats/reply', sendManualReply);

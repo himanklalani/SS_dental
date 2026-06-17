@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Send, Image as ImageIcon, FileText, Check, CheckCheck, Clock, Download, User, Trash2, Video, ArrowLeft, Paperclip, X } from 'lucide-react';
+import { Search, Send, Image as ImageIcon, FileText, Check, CheckCheck, Clock, Download, User, Trash2, Video, ArrowLeft, Paperclip, X, RefreshCw } from 'lucide-react';
 import api from '@/app/lib/api';
 
 export default function InboxPage() {
@@ -239,7 +239,16 @@ export default function InboxPage() {
             <div className={`bg-white border-r border-gray-200 flex-col w-full md:w-1/3 ${selectedChat ? 'hidden md:flex' : 'flex'}`}>
                 <div className="p-4 border-b border-gray-200 bg-gray-50 flex flex-col gap-3">
                     <div className="flex justify-between items-center">
-                        <h2 className="text-lg font-bold text-gray-800">Chats</h2>
+                        <div className="flex items-center gap-2">
+                            <h2 className="text-lg font-bold text-gray-800">Chats</h2>
+                            <button 
+                                onClick={() => { fetchChats(); if (selectedChat) fetchMessages(selectedChat._id); }}
+                                className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-100"
+                                title="Refresh Inbox"
+                            >
+                                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-blue-500' : ''}`} />
+                            </button>
+                        </div>
                         <div className="flex gap-2 bg-gray-200 p-1 rounded-lg">
                             <button 
                                 onClick={() => setShowUnreadOnly(false)} 

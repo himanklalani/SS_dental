@@ -178,7 +178,19 @@ export const getMediaUrl = async (req: Request, res: Response) => {
         });
 
         const downloadUrl = metaResponse.data.url;
-        const mimeType = metaResponse.data.mime_type;
+        const mimeType = metaResponse.data.mime_type || 'application/octet-stream';
+
+        // Map mime type to extension for proper file downloading
+        let extension = 'bin';
+        if (mimeType.includes('image/jpeg')) extension = 'jpg';
+        else if (mimeType.includes('image/png')) extension = 'png';
+        else if (mimeType.includes('video/mp4')) extension = 'mp4';
+        else if (mimeType.includes('audio/ogg')) extension = 'ogg'; // WhatsApp voice notes
+        else if (mimeType.includes('audio/mpeg')) extension = 'mp3';
+        else if (mimeType.includes('application/pdf')) extension = 'pdf';
+        else if (mimeType.includes('text/csv')) extension = 'csv';
+        else if (mimeType.includes('spreadsheetml')) extension = 'xlsx';
+        else if (mimeType.includes('/')) extension = mimeType.split('/')[1].split(';')[0]; // generic fallback
 
         // 2. Fetch the actual binary data securely
         const mediaDownloadResponse = await axios({
@@ -190,7 +202,7 @@ export const getMediaUrl = async (req: Request, res: Response) => {
 
         // 4. Send the file back to the frontend
         res.setHeader('Content-Type', mimeType);
-        res.setHeader('Content-Disposition', `inline; filename="whatsapp-media-${mediaId}"`);
+        res.setHeader('Content-Disposition', `inline; filename="whatsapp-media-${mediaId}.${extension}"`);
         mediaDownloadResponse.data.pipe(res);
     } catch (error: any) {
         console.error("Get Media Error:", error.response?.data || error.message);

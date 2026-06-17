@@ -316,28 +316,36 @@ export const webhook = async (req: Request, res: Response) => {
                 const business = await Business.findOne(); // Grab first business assuming single clinic
                 if (!business) return;
 
-                // 1. Find or create customer to link the message to
-                let customer = await Customer.findOne({ phone: From, business_id: business._id });
+                // 1. Find or create customer atomically to prevent race conditions (e.g. 10 images sent at once)
+                const now = new Date();
+                let customer = await Customer.findOneAndUpdate(
+                    { phone: From, business_id: business._id },
+                    { 
+                        $setOnInsert: { 
+                            name: messageObj.profile?.name || 'Unknown Patient', 
+                            service_type: 'General' 
+                        },
+                        $set: { last_interaction: now, last_message_received_at: now }
+                    },
+                    { upsert: true, new: false } // returns document BEFORE the update
+                );
+
+                let hoursSinceLastMessage = 999;
+                
                 if (!customer) {
-                    customer = await Customer.create({
-                        name: messageObj.profile?.name || 'Unknown Patient',
-                        phone: From,
-                        service_type: 'General', // Added required field
-                        business_id: business._id
-                    });
+                    // This was a brand new customer (upserted). Fetch the new document to use below.
+                    customer = await Customer.findOne({ phone: From, business_id: business._id });
+                    if (!customer) return; // safety catch
+                } else {
+                    // Customer existed. Calculate hours since their OLD last_message_received_at
+                    if (customer.last_message_received_at) {
+                        hoursSinceLastMessage = (now.getTime() - new Date(customer.last_message_received_at).getTime()) / (1000 * 60 * 60);
+                    }
                 }
 
-                // 2. Determine 48-hour rule for auto-greetings
-                const patient = await Patient.findOne({ phone: From });
-                const hoursSinceLastMessage = patient?.last_message_received_at 
-                    ? (Date.now() - new Date(patient.last_message_received_at).getTime()) / (1000 * 60 * 60)
-                    : 999; // if no last message, treat as first time
-
-                // Update 24-hour window timestamp for both Patient and Customer
-                await Patient.updateMany({ phone: From }, { last_message_received_at: new Date() });
-                customer.last_interaction = new Date();
-                await customer.save();
-                console.log(`[Webhook] Opened 24h window for ${From}`);
+                // Sync the Patient model 24-hour timestamp (if they exist there)
+                await Patient.updateMany({ phone: From }, { last_message_received_at: now });
+                console.log(`[Webhook] Opened 24h window for ${From}. Hours since last message: ${hoursSinceLastMessage.toFixed(2)}`);
 
                 // Spawn 23h 45m memory timer for window closure warning
                 const timeoutMs = 23.75 * 60 * 60 * 1000; // 23h 45m

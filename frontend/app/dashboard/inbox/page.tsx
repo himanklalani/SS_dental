@@ -313,14 +313,19 @@ export default function InboxPage() {
                                                     )}
                                                     
                                                     {/* Universal Download Button for ALL media */}
-                                                    <a 
-                                                        href={`/api/chats/media/${msg.media_id}`} 
-                                                        target="_blank" 
-                                                        download
-                                                        className="text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1 mt-2 bg-blue-50 p-2 rounded w-fit"
-                                                    >
-                                                        <Download className="w-3 h-3" /> Download {msg.message_type}
-                                                    </a>
+                                                    <div className="flex items-center justify-between mt-2">
+                                                        <span className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold bg-white/50 px-2 py-1 rounded">
+                                                            {msg.message_type} File
+                                                        </span>
+                                                        <a 
+                                                            href={`/api/chats/media/${msg.media_id}`} 
+                                                            target="_blank" 
+                                                            download
+                                                            className="text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1 bg-blue-50 p-2 rounded"
+                                                        >
+                                                            <Download className="w-3 h-3" /> Download
+                                                        </a>
+                                                    </div>
                                                 </div>
                                             )}
 

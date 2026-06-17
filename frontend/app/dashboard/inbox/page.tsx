@@ -14,6 +14,9 @@ export default function InboxPage() {
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const [searchQuery, setSearchQuery] = useState("");
 
+    const [showUnreadOnly, setShowUnreadOnly] = useState(false);
+    const [localReadReceipts, setLocalReadReceipts] = useState<Record<string, boolean>>({});
+
     // Use the environment variable for businessId to match other pages
     const [businessId] = useState(process.env.NEXT_PUBLIC_BUSINESS_ID || '69edf7401e9164e3fd73e073');
 
@@ -26,17 +29,24 @@ export default function InboxPage() {
     useEffect(() => {
         if (selectedChat) {
             fetchMessages(selectedChat._id);
+            
+            // Mark chat as read locally when opened
+            const latestMsgId = chats.find(c => c._id === selectedChat._id)?.latestMessage?._id;
+            if (latestMsgId) {
+                setLocalReadReceipts(prev => ({ ...prev, [latestMsgId]: true }));
+            }
+
             // Polling for real-time blue tick & new message updates
             const interval = setInterval(() => {
                 fetchMessages(selectedChat._id);
             }, 3000);
             return () => clearInterval(interval);
         }
-    }, [selectedChat]);
+    }, [selectedChat, chats]);
 
     const getSpecificFileType = (msg: any) => {
         if (msg.message_type !== 'document') return msg.message_type;
-        const lowerContent = msg.content.toLowerCase();
+        const lowerContent = msg.content?.toLowerCase() || '';
         if (lowerContent.endsWith('.pdf')) return 'pdf';
         if (lowerContent.endsWith('.csv')) return 'csv';
         if (lowerContent.endsWith('.xlsx') || lowerContent.endsWith('.xls')) return 'excel';
@@ -58,6 +68,7 @@ export default function InboxPage() {
         }
     };
 
+    // ... (rest of the handlers) ...
     const fetchMessages = async (customerId: string) => {
         try {
             const res = await api.get(`/chats/${customerId}`);
@@ -112,10 +123,19 @@ export default function InboxPage() {
         return <Clock className="w-3 h-3 text-gray-400 inline-block ml-1" />; // queued
     };
 
-    const filteredChats = chats.filter(c => 
-        c.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-        c.phone.includes(searchQuery)
-    );
+    const isUnread = (chat: any) => {
+        const latest = chat.latestMessage;
+        if (!latest) return false;
+        if (latest.direction === 'outbound') return false;
+        // If it's inbound, it's unread unless we explicitly marked this exact message ID as read
+        return !localReadReceipts[latest._id];
+    };
+
+    const filteredChats = chats.filter(c => {
+        const matchesSearch = c.name.toLowerCase().includes(searchQuery.toLowerCase()) || c.phone.includes(searchQuery);
+        const matchesUnread = showUnreadOnly ? isUnread(c) : true;
+        return matchesSearch && matchesUnread;
+    });
 
     const isWindowOpen = () => {
         if (!selectedChat?.last_interaction) return false;
@@ -129,7 +149,6 @@ export default function InboxPage() {
         if (newName && newName.trim()) {
             try {
                 const res = await api.put(`/chats/${selectedChat._id}/name`, { name: newName.trim() });
-                // Update local state
                 setSelectedChat({ ...selectedChat, name: res.data.name });
                 setChats(prevChats => prevChats.map(c => 
                     c._id === selectedChat._id ? { ...c, name: res.data.name } : c
@@ -179,17 +198,33 @@ export default function InboxPage() {
     };
 
     return (
-        <div className="flex h-[calc(100vh-64px)] md:h-[calc(100vh-80px)] -m-4 md:m-0 bg-gray-100 overflow-hidden">
+        <div className="flex h-[calc(100dvh-64px)] md:h-[calc(100vh-80px)] -m-4 md:m-0 bg-gray-100 overflow-hidden">
             {/* Sidebar List */}
             <div className={`bg-white border-r border-gray-200 flex-col w-full md:w-1/3 ${selectedChat ? 'hidden md:flex' : 'flex'}`}>
-                <div className="p-4 border-b border-gray-200 bg-gray-50">
-                    <h2 className="text-lg font-bold text-gray-800 mb-3">Chats</h2>
+                <div className="p-4 border-b border-gray-200 bg-gray-50 flex flex-col gap-3">
+                    <div className="flex justify-between items-center">
+                        <h2 className="text-lg font-bold text-gray-800">Chats</h2>
+                        <div className="flex gap-2 bg-gray-200 p-1 rounded-lg">
+                            <button 
+                                onClick={() => setShowUnreadOnly(false)} 
+                                className={`px-3 py-1 text-xs font-semibold rounded-md transition ${!showUnreadOnly ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+                            >
+                                All
+                            </button>
+                            <button 
+                                onClick={() => setShowUnreadOnly(true)} 
+                                className={`px-3 py-1 text-xs font-semibold rounded-md transition ${showUnreadOnly ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+                            >
+                                Unread
+                            </button>
+                        </div>
+                    </div>
                     <div className="relative">
                         <Search className="w-4 h-4 absolute left-3 top-2.5 text-gray-400" />
                         <input
                             type="text"
                             placeholder="Search patients..."
-                            className="w-full pl-9 pr-4 py-2 bg-gray-100 border-none rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                            className="w-full pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none shadow-sm"
                             value={searchQuery}
                             onChange={e => setSearchQuery(e.target.value)}
                         />
@@ -200,36 +235,46 @@ export default function InboxPage() {
                     {loading ? (
                         <div className="flex justify-center p-8"><span className="animate-spin h-6 w-6 border-2 border-blue-500 rounded-full border-t-transparent"></span></div>
                     ) : filteredChats.length === 0 ? (
-                        <div className="text-center p-8 text-gray-500 text-sm">No chats found.</div>
+                        <div className="text-center p-8 text-gray-500 text-sm">
+                            {showUnreadOnly ? 'No unread messages.' : 'No chats found.'}
+                        </div>
                     ) : (
-                        filteredChats.map((chat) => (
-                            <div 
-                                key={chat._id} 
-                                onClick={() => setSelectedChat(chat)}
-                                className={`p-4 border-b border-gray-100 cursor-pointer transition hover:bg-gray-50 flex gap-3 ${selectedChat?._id === chat._id ? 'bg-blue-50 md:border-l-4 md:border-l-blue-500' : ''}`}
-                            >
-                                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold shrink-0">
-                                    {chat.name.charAt(0).toUpperCase()}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex justify-between items-center mb-1">
-                                        <h3 className="font-semibold text-sm text-gray-800 truncate">{chat.name}</h3>
-                                        {chat.latestMessage && (
-                                            <span className="text-xs text-gray-400 whitespace-nowrap ml-2">
-                                                {formatTime(chat.latestMessage.createdAt)}
-                                            </span>
+                        filteredChats.map((chat) => {
+                            const unread = isUnread(chat);
+                            return (
+                                <div 
+                                    key={chat._id} 
+                                    onClick={() => setSelectedChat(chat)}
+                                    className={`p-4 border-b border-gray-100 cursor-pointer transition hover:bg-gray-50 flex gap-3 ${selectedChat?._id === chat._id ? 'bg-blue-50 md:border-l-4 md:border-l-blue-500' : ''}`}
+                                >
+                                    <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold shrink-0 relative">
+                                        {chat.name.charAt(0).toUpperCase()}
+                                        {unread && (
+                                            <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-green-500 border-2 border-white rounded-full"></span>
                                         )}
                                     </div>
-                                    <div className="text-xs text-gray-500 truncate">
-                                        {chat.latestMessage ? (
-                                            chat.latestMessage.message_type === 'image' ? '📷 Image' : 
-                                            chat.latestMessage.message_type === 'template' ? '📄 Template Sent' :
-                                            chat.latestMessage.content
-                                        ) : 'No messages yet'}
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex justify-between items-center mb-1">
+                                            <h3 className={`text-sm truncate ${unread ? 'font-bold text-gray-900' : 'font-semibold text-gray-800'}`}>
+                                                {chat.name}
+                                            </h3>
+                                            {chat.latestMessage && (
+                                                <span className={`text-xs whitespace-nowrap ml-2 ${unread ? 'text-green-600 font-bold' : 'text-gray-400'}`}>
+                                                    {formatTime(chat.latestMessage.createdAt)}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className={`text-xs truncate ${unread ? 'text-gray-800 font-medium' : 'text-gray-500'}`}>
+                                            {chat.latestMessage ? (
+                                                chat.latestMessage.message_type === 'image' ? '📷 Image' : 
+                                                chat.latestMessage.message_type === 'template' ? '📄 Template Sent' :
+                                                chat.latestMessage.content
+                                            ) : 'No messages yet'}
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        ))
+                            );
+                        })
                     )}
                 </div>
             </div>

@@ -405,13 +405,33 @@ export default function InboxPage() {
                                             <button 
                                                 onClick={() => setReplyingToMessage(msg)}
                                                 title="Reply to message"
-                                                className="opacity-0 group-hover:opacity-100 p-2 text-gray-400 hover:text-blue-500 hover:bg-gray-200 rounded-full transition-all focus:opacity-100"
+                                                className="opacity-100 md:opacity-0 md:group-hover:opacity-100 p-2 text-gray-400 hover:text-blue-500 hover:bg-gray-200 rounded-full transition-all focus:opacity-100"
                                             >
                                                 <Reply className="w-4 h-4" />
                                             </button>
                                         )}
                                         <div className={`max-w-[70%] rounded-xl px-4 py-2 shadow-sm relative ${isOutbound ? 'bg-[#d9fdd3] text-gray-800 rounded-tr-none' : 'bg-white text-gray-800 rounded-tl-none'}`}>
                                             
+                                            {/* Context/Replied-to Box */}
+                                            {msg.context_message_id && (
+                                                <div className="bg-black/5 border-l-4 border-blue-400 p-2 rounded mb-2 flex flex-col min-w-0">
+                                                    <span className="text-[11px] font-bold text-blue-600 mb-0.5">
+                                                        {(() => {
+                                                            const ctx = messages.find(m => m.whatsapp_message_id === msg.context_message_id);
+                                                            if (ctx) return ctx.direction === 'inbound' ? (selectedChat.name || 'Patient') : 'You';
+                                                            return isOutbound ? 'Patient' : 'You'; // fallback
+                                                        })()}
+                                                    </span>
+                                                    <span className="text-xs text-gray-600 truncate">
+                                                        {(() => {
+                                                            const ctx = messages.find(m => m.whatsapp_message_id === msg.context_message_id);
+                                                            if (ctx) return ctx.content || `[${ctx.message_type} attached]`;
+                                                            return 'Message context...';
+                                                        })()}
+                                                    </span>
+                                                </div>
+                                            )}
+
                                             {/* Media Rendering */}
                                             {msg.media_id && (
                                                 <div className="mb-2">
@@ -481,7 +501,7 @@ export default function InboxPage() {
                                             <button 
                                                 onClick={() => setReplyingToMessage(msg)}
                                                 title="Reply to message"
-                                                className="opacity-0 group-hover:opacity-100 p-2 text-gray-400 hover:text-blue-500 hover:bg-gray-200 rounded-full transition-all focus:opacity-100"
+                                                className="opacity-100 md:opacity-0 md:group-hover:opacity-100 p-2 text-gray-400 hover:text-blue-500 hover:bg-gray-200 rounded-full transition-all focus:opacity-100"
                                             >
                                                 <Reply className="w-4 h-4" />
                                             </button>

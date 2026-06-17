@@ -416,7 +416,6 @@ export const webhook = async (req: Request, res: Response) => {
                     } else {
                         console.log(`[Webhook] Received message from ${From}: ${Body}`);
                         
-                        // Save inbound message
                         await Message.create({
                             customer_id: customer._id,
                             business_id: business._id,
@@ -424,7 +423,8 @@ export const webhook = async (req: Request, res: Response) => {
                             message_type: 'text',
                             status: 'received',
                             content: Body,
-                            whatsapp_message_id: messageObj.id
+                            whatsapp_message_id: messageObj.id,
+                            context_message_id: messageObj.context?.id
                         });
                     }
                 } 
@@ -445,7 +445,8 @@ export const webhook = async (req: Request, res: Response) => {
                             status: 'received',
                             content: caption || filename || `Received a ${messageObj.type}`,
                             media_id: mediaId,
-                            whatsapp_message_id: messageObj.id
+                            whatsapp_message_id: messageObj.id,
+                            context_message_id: messageObj.context?.id
                         });
                     }
                 }
@@ -461,7 +462,8 @@ export const webhook = async (req: Request, res: Response) => {
                         message_type: 'button',
                         status: 'received',
                         content: buttonText || 'Button clicked',
-                        whatsapp_message_id: messageObj.id
+                        whatsapp_message_id: messageObj.id,
+                        context_message_id: messageObj.context?.id
                     });
                 }
                 else if (messageObj.type === 'interactive') {
@@ -475,7 +477,8 @@ export const webhook = async (req: Request, res: Response) => {
                         message_type: 'interactive',
                         status: 'received',
                         content: buttonReply || 'Interactive button clicked',
-                        whatsapp_message_id: messageObj.id
+                        whatsapp_message_id: messageObj.id,
+                        context_message_id: messageObj.context?.id
                     });
                 }
             }

@@ -153,7 +153,8 @@ export const sendManualReply = async (req: Request, res: Response) => {
             message_type: 'text',
             status: 'sent',
             content: text,
-            whatsapp_message_id: response?.sid
+            whatsapp_message_id: response?.sid,
+            context_message_id: reply_to_message_id
         });
 
         res.status(200).json({ message: 'Reply sent', data: message });
@@ -270,7 +271,8 @@ export const sendMediaReply = async (req: Request, res: Response) => {
             status: 'sent',
             content: caption ? caption : fallbackContent,
             media_id: response.metaMediaId,
-            whatsapp_message_id: response.sid
+            whatsapp_message_id: response.sid,
+            context_message_id: reply_to_message_id
         });
 
         res.status(200).json({ message: 'Media sent', data: message });

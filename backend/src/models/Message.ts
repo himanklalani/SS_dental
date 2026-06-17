@@ -13,6 +13,7 @@ export interface IMessage extends Document {
   clicked_at?: Date;
   scheduled_at?: Date;
   whatsapp_message_id?: string;
+  context_message_id?: string;
   createdAt: Date;
 }
 
@@ -41,6 +42,7 @@ const MessageSchema: Schema = new Schema({
   clicked_at: { type: Date },
   scheduled_at: { type: Date },
   whatsapp_message_id: { type: String },
+  context_message_id: { type: String },
 }, { timestamps: true });
 
 export default mongoose.model<IMessage>('Message', MessageSchema);

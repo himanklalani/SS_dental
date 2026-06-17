@@ -281,9 +281,9 @@ export default function InboxPage() {
                                             {msg.media_id && (
                                                 <div className="mb-2">
                                                     {msg.message_type === 'image' && (
-                                                        <a href={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/chats/media/${msg.media_id}`} target="_blank" rel="noreferrer">
+                                                        <a href={`/api/chats/media/${msg.media_id}`} target="_blank" rel="noreferrer">
                                                             <img 
-                                                                src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/chats/media/${msg.media_id}`} 
+                                                                src={`/api/chats/media/${msg.media_id}`} 
                                                                 alt="Sent Image" 
                                                                 className="w-full max-h-60 object-cover rounded-lg mb-1 border border-black/5"
                                                             />
@@ -291,14 +291,14 @@ export default function InboxPage() {
                                                     )}
                                                     {msg.message_type === 'video' && (
                                                         <video 
-                                                            src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/chats/media/${msg.media_id}`} 
+                                                            src={`/api/chats/media/${msg.media_id}`} 
                                                             controls 
                                                             className="w-full max-h-60 rounded-lg mb-1 border border-black/5"
                                                         />
                                                     )}
                                                     {msg.message_type === 'audio' && (
                                                         <audio 
-                                                            src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/chats/media/${msg.media_id}`} 
+                                                            src={`/api/chats/media/${msg.media_id}`} 
                                                             controls 
                                                             className="w-full mb-1"
                                                         />
@@ -314,7 +314,7 @@ export default function InboxPage() {
                                                     
                                                     {/* Universal Download Button for ALL media */}
                                                     <a 
-                                                        href={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/chats/media/${msg.media_id}`} 
+                                                        href={`/api/chats/media/${msg.media_id}`} 
                                                         target="_blank" 
                                                         download
                                                         className="text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1 mt-2 bg-blue-50 p-2 rounded w-fit"

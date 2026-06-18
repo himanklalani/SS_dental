@@ -329,7 +329,7 @@ export default function AppointmentsPage() {
                                                 required={!newAppointment.patient_id}
                                                 className={inputCls}
                                                 placeholder="Search patient name..."
-                                                value={showPatientDropdown ? patientSearch : (patients.find(p => p._id === newAppointment.patient_id)?.name || patientSearch)}
+                                                value={showPatientDropdown ? patientSearch : (patients.find(p => p._id === newAppointment.patient_id) ? `${patients.find(p => p._id === newAppointment.patient_id)?.name} - ${patients.find(p => p._id === newAppointment.patient_id)?.phone}` : patientSearch)}
                                                 onChange={e => {
                                                     setPatientSearch(e.target.value);
                                                     setNewAppointment({...newAppointment, patient_id: ''});
@@ -350,7 +350,8 @@ export default function AppointmentsPage() {
                                                         <div 
                                                             key={p._id}
                                                             className="px-4 py-2 hover:bg-neutral-100 dark:hover:bg-neutral-700 cursor-pointer text-sm"
-                                                            onClick={() => {
+                                                            onMouseDown={(e) => {
+                                                                e.preventDefault(); // Prevents the input from losing focus immediately
                                                                 setNewAppointment({...newAppointment, patient_id: p._id});
                                                                 setPatientSearch(p.name);
                                                                 setShowPatientDropdown(false);

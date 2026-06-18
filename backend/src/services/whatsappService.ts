@@ -84,10 +84,23 @@ export const sendWhatsAppMessage = async (phone: string, name: string, service_t
                };
           } else if (templateName === 'thank_you_simple' || templateName === 'review_request') {
                overrideToFreeForm = true;
-               const reviewUrl = `https://review-booking-system.onrender.com/api/r/${appointmentId}`;
+               const reviewUrl = appointmentId ? `https://review-booking-system.onrender.com/api/r/${appointmentId}` : 'https://g.page/r/Cb40ziDcqQoHEAE/review';
                freeFormPayload = {
                    type: "text",
                    text: { body: `Hi ${name}, thank you for visiting us for your ${service_type}. We hope you had a great experience! Could you please take a moment to leave us a review?\n\nLeave a review here: ${reviewUrl}` }
+               };
+          } else if (templateName === 'review_follow_up') {
+               overrideToFreeForm = true;
+               const reviewUrl = appointmentId ? `https://review-booking-system.onrender.com/api/r/${appointmentId}` : 'https://g.page/r/Cb40ziDcqQoHEAE/review';
+               freeFormPayload = {
+                   type: "text",
+                   text: { body: `Hi ${name}, this is a gentle follow-up from Dr. Saachi Shingrani's Dental Care regarding your recent ${service_type}. We would truly appreciate it if you could share your feedback with us: ${reviewUrl}` }
+               };
+          } else if (templateName === 'generic_clinic_msg') {
+               overrideToFreeForm = true;
+               freeFormPayload = {
+                   type: "text",
+                   text: { body: `Greetings from Dr. Saachi Shingrani's Dental Care, ${name}, we sincerely hope you are doing well. Please feel free to reach out to us or book your next appointment at your convenience or send a text here. 😊\n\nVisit our website: https://www.srsdentalcare.in\nCall us: +919004402797` }
                };
           }
       }

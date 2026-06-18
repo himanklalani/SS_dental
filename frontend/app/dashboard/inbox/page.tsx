@@ -338,11 +338,11 @@ export default function InboxPage() {
             </div>
 
             {/* Chat Thread */}
-            <div className={`flex-1 flex flex-col bg-[#efeae2] animate-in fade-in slide-in-from-right-8 md:slide-in-from-none duration-300 ${selectedChat ? 'flex' : 'hidden md:flex'}`}>
+            <div className={`flex-1 flex flex-col min-w-0 bg-[#efeae2] animate-in fade-in slide-in-from-right-8 md:slide-in-from-none duration-300 ${selectedChat ? 'flex' : 'hidden md:flex'}`}>
                 {selectedChat ? (
                     <>
                         {/* Chat Header */}
-                        <div className="h-16 px-4 md:px-6 bg-white border-b border-gray-200 flex items-center justify-between shadow-sm z-10">
+                        <div className="h-16 px-4 md:px-6 bg-white border-b border-gray-200 flex items-center justify-between shadow-sm z-10 shrink-0">
                             <div className="flex items-center gap-2 md:gap-3">
                                 {/* Mobile Back Button */}
                                 <button 
@@ -491,7 +491,7 @@ export default function InboxPage() {
                                              msg.content !== `Received a ${msg.message_type}` && 
                                              msg.content !== `Received a ${getSpecificFileType(msg)}` &&
                                              (!msg.media_id || !msg.content.toLowerCase().match(/\.(pdf|csv|xlsx|xls|jpg|png|mp4)$/)) && (
-                                                <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                                                <p className="text-sm whitespace-pre-wrap break-words overflow-hidden">{msg.content}</p>
                                             )}
                                             
                                             <div className={`text-[10px] mt-1 flex items-center gap-1 justify-end ${isOutbound ? 'text-gray-500' : 'text-gray-400'}`}>

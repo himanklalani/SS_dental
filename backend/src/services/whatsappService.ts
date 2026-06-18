@@ -1,6 +1,8 @@
 import axios from 'axios';
 import Business from '../models/Business';
 import Patient from '../models/Patient';
+import Customer from '../models/Customer';
+import Message from '../models/Message';
 
 const META_API_TOKEN = process.env.META_API_TOKEN;
 const META_PHONE_NUMBER_ID = process.env.META_PHONE_NUMBER_ID;
@@ -152,6 +154,60 @@ export const sendWhatsAppMessage = async (phone: string, name: string, service_t
 
       console.log(`[Meta API] Sending message to ${cleanPhone}...`);
 
+      // Determine the text content for inbox logging
+      let inboxContent = '';
+      if (overrideToFreeForm && freeFormPayload?.text?.body) {
+          inboxContent = freeFormPayload.text.body;
+      } else if (customMessage) {
+          inboxContent = customMessage;
+      } else if (templateName) {
+          inboxContent = `[Template: ${templateName}]`;
+      }
+
+      const saveToInbox = async (sid: string) => {
+          try {
+              // Resolve the name: prefer Patient DB name for new contacts
+              const dbPhoneFmt = phone.startsWith('+') ? phone : '+' + cleanPhone;
+              const patientRecord = await Patient.findOne({ phone: dbPhoneFmt });
+              const resolvedName = patientRecord?.name || name || 'Unknown Patient';
+
+              // Find or create Customer — NEVER overwrite an existing name
+              let customer = await Customer.findOne({ phone: dbPhoneFmt, business_id: business._id });
+              if (!customer) {
+                  customer = await Customer.create({
+                      phone: dbPhoneFmt,
+                      name: resolvedName,
+                      service_type: service_type || 'General',
+                      business_id: business._id,
+                      last_interaction: new Date()
+                  });
+                  console.log(`[Inbox] Created new customer for ${dbPhoneFmt} as "${resolvedName}"`);
+              } else if (customer.name === 'Unknown Patient' && resolvedName !== 'Unknown Patient') {
+                  // Only auto-fix the name if it's still the default placeholder
+                  customer.name = resolvedName;
+                  await customer.save();
+                  console.log(`[Inbox] Updated customer name from "Unknown Patient" to "${resolvedName}"`);
+              }
+
+              // Save the outbound message
+              if (inboxContent) {
+                  await Message.create({
+                      customer_id: customer._id,
+                      business_id: business._id,
+                      direction: 'outbound',
+                      message_type: overrideToFreeForm ? 'text' : (templateName ? 'template' : 'text'),
+                      status: 'sent',
+                      content: inboxContent,
+                      whatsapp_message_id: sid
+                  });
+                  console.log(`[Inbox] Saved outbound message for ${dbPhoneFmt}: ${inboxContent.substring(0, 60)}...`);
+              }
+          } catch (inboxErr) {
+              // Never let inbox logging break the main send flow
+              console.error('[Inbox] Failed to save to inbox (non-fatal):', inboxErr);
+          }
+      };
+
       const sendPayload = async (currentPayload: any) => {
           return await axios.post(url, currentPayload, {
               headers: {
@@ -163,8 +219,10 @@ export const sendWhatsAppMessage = async (phone: string, name: string, service_t
 
       try {
           const response = await sendPayload(payload);
-          console.log(`[Meta API] Message sent! SID: ${response.data.messages?.[0]?.id}`);
-          return { sid: response.data.messages?.[0]?.id };
+          const sid = response.data.messages?.[0]?.id;
+          console.log(`[Meta API] Message sent! SID: ${sid}`);
+          await saveToInbox(sid);
+          return { sid };
       } catch (error: any) {
           // If template language error (132001), try en_US and then en_GB
           if (error.response?.data?.error?.code === 132001 && payload.type === 'template') {
@@ -172,15 +230,19 @@ export const sendWhatsAppMessage = async (phone: string, name: string, service_t
               payload.template.language.code = 'en_US';
               try {
                   const responseUS = await sendPayload(payload);
-                  console.log(`[Meta API] Message sent with en_US! SID: ${responseUS.data.messages?.[0]?.id}`);
-                  return { sid: responseUS.data.messages?.[0]?.id };
+                  const sidUS = responseUS.data.messages?.[0]?.id;
+                  console.log(`[Meta API] Message sent with en_US! SID: ${sidUS}`);
+                  await saveToInbox(sidUS);
+                  return { sid: sidUS };
               } catch (errUS: any) {
                   if (errUS.response?.data?.error?.code === 132001) {
                       console.log(`[Meta API] Language code en_US failed. Retrying with en_GB...`);
                       payload.template.language.code = 'en_GB';
                       const responseGB = await sendPayload(payload);
-                      console.log(`[Meta API] Message sent with en_GB! SID: ${responseGB.data.messages?.[0]?.id}`);
-                      return { sid: responseGB.data.messages?.[0]?.id };
+                      const sidGB = responseGB.data.messages?.[0]?.id;
+                      console.log(`[Meta API] Message sent with en_GB! SID: ${sidGB}`);
+                      await saveToInbox(sidGB);
+                      return { sid: sidGB };
                   }
                   throw errUS;
               }

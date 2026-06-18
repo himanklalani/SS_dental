@@ -419,15 +419,7 @@ export const webhook = async (req: Request, res: Response) => {
                                     business._id,
                                     'Thanks for reaching out! Hope you were satisfied with the answer. If there is any need, please leave a message which will allow us to reach you back ASAP.'
                                 );
-                                await Message.create({
-                                    customer_id: customer._id,
-                                    business_id: business._id,
-                                    direction: 'outbound',
-                                    message_type: 'text',
-                                    status: 'sent',
-                                    content: 'Thanks for reaching out! Hope you were satisfied with the answer. If there is any need, please leave a message which will allow us to reach you back ASAP.',
-                                    whatsapp_message_id: response?.sid
-                                });
+                                // Message is now saved automatically by sendWhatsAppMessage
                             }
                         }
                     } catch (err) {
@@ -453,16 +445,7 @@ export const webhook = async (req: Request, res: Response) => {
                             undefined, 
                             'auto_reply_hello'
                         );
-
-                        await Message.create({
-                            customer_id: customer._id,
-                            business_id: business._id,
-                            direction: 'outbound',
-                            message_type: 'template',
-                            status: 'sent',
-                            content: 'auto_reply_hello',
-                            whatsapp_message_id: response?.sid
-                        });
+                        // Message is now saved automatically by sendWhatsAppMessage
                     } catch (e) {
                         console.error('[Webhook] Failed to send auto reply', e);
                     }

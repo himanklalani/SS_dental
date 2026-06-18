@@ -30,6 +30,23 @@ export const getChats = async (req: Request, res: Response) => {
         const customerIds = latestMessages.map(m => m._id);
         const customers = await Customer.find({ _id: { $in: customerIds } }).lean();
 
+        // Enrich "Unknown Patient" names from Patient DB (never overwrite manual edits)
+        const unknownCustomers = customers.filter(c => c.name === 'Unknown Patient');
+        if (unknownCustomers.length > 0) {
+            const phones = unknownCustomers.map(c => c.phone);
+            const matchedPatients = await Patient.find({ phone: { $in: phones } }).lean();
+            const phoneToName: Record<string, string> = {};
+            matchedPatients.forEach(p => { if (p.name) phoneToName[p.phone] = p.name; });
+
+            for (const c of unknownCustomers) {
+                if (phoneToName[c.phone]) {
+                    c.name = phoneToName[c.phone];
+                    // Persist the fix so it sticks
+                    await Customer.updateOne({ _id: c._id }, { name: phoneToName[c.phone] });
+                }
+            }
+        }
+
         // Combine customer data with their latest message
         const chats = customers.map(customer => {
             const latestMsg = latestMessages.find(m => m._id.toString() === customer._id.toString());
@@ -132,7 +149,7 @@ export const sendManualReply = async (req: Request, res: Response) => {
             });
         }
 
-        // Send via WhatsApp Service
+        // Send via WhatsApp Service (message is now auto-saved to inbox by the service)
         const response = await sendWhatsAppMessage(
             customer.phone,
             customer.name,
@@ -145,17 +162,25 @@ export const sendManualReply = async (req: Request, res: Response) => {
             reply_to_message_id
         );
 
-        // Save as outbound message
-        const message = await Message.create({
-            customer_id: customer._id,
-            business_id: business_id,
-            direction: 'outbound',
-            message_type: 'text',
-            status: 'sent',
-            content: text,
-            whatsapp_message_id: response?.sid,
-            context_message_id: reply_to_message_id
-        });
+        // Retrieve the message saved by sendWhatsAppMessage for the API response
+        let message = await Message.findOne({ whatsapp_message_id: response?.sid });
+        if (!message) {
+            // Fallback: create manually if inbox save somehow missed (shouldn't happen)
+            message = await Message.create({
+                customer_id: customer._id,
+                business_id: business_id,
+                direction: 'outbound',
+                message_type: 'text',
+                status: 'sent',
+                content: text,
+                whatsapp_message_id: response?.sid,
+                context_message_id: reply_to_message_id
+            });
+        } else if (reply_to_message_id && !message.context_message_id) {
+            // Ensure reply context is persisted
+            message.context_message_id = reply_to_message_id;
+            await message.save();
+        }
 
         res.status(200).json({ message: 'Reply sent', data: message });
     } catch (error: any) {

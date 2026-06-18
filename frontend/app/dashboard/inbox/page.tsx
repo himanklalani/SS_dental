@@ -240,7 +240,7 @@ export default function InboxPage() {
     };
 
     return (
-        <div className="fixed inset-x-0 bottom-0 top-[64px] md:relative md:top-auto md:inset-auto flex md:h-[calc(100vh-80px)] bg-gray-100 overflow-hidden z-40">
+        <div className="fixed inset-x-0 bottom-0 top-[56px] md:relative md:top-auto md:inset-auto flex md:h-[calc(100vh-80px)] bg-gray-100 overflow-hidden z-40">
             {/* Sidebar List */}
             <div className={`bg-white border-r border-gray-200 flex-col w-full md:w-1/3 ${selectedChat ? 'hidden md:flex' : 'flex'}`}>
                 <div className="p-4 border-b border-gray-200 bg-gray-50 flex flex-col gap-3">
@@ -398,7 +398,7 @@ export default function InboxPage() {
                         </div>
 
                         {/* Messages Area */}
-                        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                        <div className="flex-1 overflow-y-auto p-3 md:p-6 space-y-3 md:space-y-4">
                             {messages.map((msg, idx) => {
                                 const isOutbound = msg.direction === 'outbound';
                                 return (
@@ -412,7 +412,7 @@ export default function InboxPage() {
                                                 <Reply className="w-4 h-4" />
                                             </button>
                                         )}
-                                        <div className={`max-w-[70%] rounded-xl px-4 py-2 shadow-sm relative ${isOutbound ? 'bg-[#d9fdd3] text-gray-800 rounded-tr-none' : 'bg-white text-gray-800 rounded-tl-none'}`}>
+                                        <div className={`max-w-[85%] md:max-w-[70%] rounded-xl px-3 md:px-4 py-2 shadow-sm relative ${isOutbound ? 'bg-[#d9fdd3] text-gray-800 rounded-tr-none' : 'bg-white text-gray-800 rounded-tl-none'}`}>
                                             
                                             {/* Context/Replied-to Box */}
                                             {msg.context_message_id && (
@@ -516,7 +516,7 @@ export default function InboxPage() {
 
                         {/* Replying To Preview Box */}
                         {replyingToMessage && (
-                            <div className="absolute bottom-[72px] left-4 right-4 bg-gray-100 border-l-4 border-blue-500 rounded-lg p-3 flex items-center justify-between shadow-md z-10 animate-in slide-in-from-bottom-2">
+                            <div className="absolute bottom-[64px] md:bottom-[72px] left-2 right-2 md:left-4 md:right-4 bg-gray-100 border-l-4 border-blue-500 rounded-lg p-2 md:p-3 flex items-center justify-between shadow-md z-10 animate-in slide-in-from-bottom-2">
                                 <div className="flex-1 min-w-0 pr-4">
                                     <p className="text-xs font-bold text-blue-600 mb-0.5">
                                         Replying to {replyingToMessage.direction === 'inbound' ? (selectedChat.name || 'Patient') : 'Yourself'}
@@ -535,7 +535,7 @@ export default function InboxPage() {
                         )}
 
                         {/* Input Area */}
-                        <div className="p-4 bg-[#f0f2f5] flex flex-col gap-2 relative">
+                        <div className="p-2 md:p-4 bg-[#f0f2f5] flex flex-col gap-2 relative">
                             {!isWindowOpen() && (
                                 <div className="text-center bg-yellow-50 text-yellow-800 text-xs py-2 px-4 rounded-lg border border-yellow-200">
                                     The 24-hour service window has closed. You cannot send free-form text. Please use the Broadcast tool to send a pre-approved template first.
@@ -581,7 +581,7 @@ export default function InboxPage() {
                                 <input
                                     type="text"
                                     placeholder={isWindowOpen() ? (selectedFile ? "Add a caption..." : "Type a message...") : "Window closed. Cannot send manual messages."}
-                                    className="flex-1 bg-white border-none rounded-full px-5 py-3 outline-none focus:ring-2 focus:ring-blue-500 shadow-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
+                                    className="flex-1 bg-white border-none rounded-full px-4 md:px-5 py-2.5 md:py-3 outline-none focus:ring-2 focus:ring-blue-500 shadow-sm disabled:bg-gray-100 disabled:cursor-not-allowed text-sm md:text-base"
                                     value={newMessage}
                                     onChange={(e) => setNewMessage(e.target.value)}
                                     disabled={!isWindowOpen() || sending}
@@ -589,7 +589,7 @@ export default function InboxPage() {
                                 <button 
                                     type="submit"
                                     disabled={(!newMessage.trim() && !selectedFile) || !isWindowOpen() || sending}
-                                    className="w-12 h-12 bg-blue-600 hover:bg-blue-700 text-white rounded-full flex items-center justify-center transition disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                                    className="w-10 h-10 md:w-12 md:h-12 bg-blue-600 hover:bg-blue-700 text-white rounded-full flex items-center justify-center transition disabled:opacity-50 disabled:cursor-not-allowed shadow-sm shrink-0"
                                 >
                                     {sending ? (
                                         <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>

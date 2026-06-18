@@ -45,62 +45,38 @@ export const sendWhatsAppMessage = async (phone: string, name: string, service_t
   }
 
   try {
-      // SMART ROUTING INTERCEPTION
+      // 1. Generate readable representation of templates
+      let readableTemplateText = '';
+      if (templateName === 'auto_reply_hello') {
+          readableTemplateText = `Hello! Welcome to Dr. Saachi Shingrani's Dental Care.\n\nTo book an appointment, please visit our website: www.srsdentalcare.in`;
+      } else if (templateName === 'booking_confirmations') {
+          readableTemplateText = `Hi ${name}, your appointment for ${templateParams?.[3] || service_type} is scheduled on ${templateParams?.[1]} at ${templateParams?.[2]} at Dr. Saachi Shingrani's Dental Care. See you soon!\n\n(Please reply "Yes" to confirm)`;
+      } else if (templateName === 'appointment_reminder') {
+          readableTemplateText = `Hi ${name}, this is a friendly reminder that you have an appointment for ${templateParams?.[1] || service_type} today at ${templateParams?.[2]}. We look forward to seeing you!\n\n(Please reply "Yes" to confirm)`;
+      } else if (templateName === 'thank_you_simple' || templateName === 'review_request') {
+          const reviewUrl = appointmentId ? `https://review-booking-system.onrender.com/api/r/${appointmentId}` : 'https://g.page/r/Cb40ziDcqQoHEAE/review';
+          readableTemplateText = `Hi ${name}, thank you for visiting us for your ${service_type}. We hope you had a great experience! Could you please take a moment to leave us a review?\n\nLeave a review here: ${reviewUrl}`;
+      } else if (templateName === 'review_follow_up') {
+          const reviewUrl = appointmentId ? `https://review-booking-system.onrender.com/api/r/${appointmentId}` : 'https://g.page/r/Cb40ziDcqQoHEAE/review';
+          readableTemplateText = `Hi ${name}, this is a gentle follow-up from Dr. Saachi Shingrani's Dental Care regarding your recent ${service_type}. We would truly appreciate it if you could share your feedback with us: ${reviewUrl}`;
+      } else if (templateName === 'generic_clinic_msg') {
+          readableTemplateText = `Greetings from Dr. Saachi Shingrani's Dental Care, ${name}, we sincerely hope you are doing well. Please feel free to reach out to us or book your next appointment at your convenience or send a text here. 😊\n\nVisit our website: https://www.srsdentalcare.in\nCall us: +919004402797`;
+      } else if (templateName === 'appointment_cancelled') {
+          readableTemplateText = `Greetings ${name}, as requested, your appointment at Dr. Saachi Shingrani's Dental Care for your ${templateParams?.[1] || service_type} has been successfully cancelled.`;
+      } else if (templateName === 'appointment_rescheduled') {
+          readableTemplateText = `Greetings ${name}, your appointment at Dr. Saachi Shingrani's Dental Care has been updated to ${templateParams?.[1]} at ${templateParams?.[2]} for ${templateParams?.[3] || service_type}. The previous time slot is now cancelled. Looking forward to seeing you! 😊`;
+      }
+
+      // 2. SMART ROUTING INTERCEPTION
       let overrideToFreeForm = false;
       let freeFormPayload: any = null;
 
-      if ((windowIsOpen || templateName === 'auto_reply_hello') && templateName) {
-          if (templateName === 'auto_reply_hello') {
-              overrideToFreeForm = true;
-              freeFormPayload = {
-                  type: "text",
-                  text: { body: `Hello! Welcome to Dr. Saachi Shingrani's Dental Care.\n\nTo book an appointment, please visit our website: www.srsdentalcare.in` }
-              };
-          } else if (templateName === 'booking_confirmations') {
-               overrideToFreeForm = true;
-               freeFormPayload = {
-                   type: "text",
-                   text: { body: `Hi ${name}, your appointment for ${templateParams?.[3] || service_type} is scheduled on ${templateParams?.[1]} at ${templateParams?.[2]} at Dr. Saachi Shingrani's Dental Care. See you soon!\n\n(Please reply "Yes" to confirm)` }
-               };
-          } else if (templateName === 'appointment_reminder') {
-               overrideToFreeForm = true;
-               freeFormPayload = {
-                   type: "text",
-                   text: { body: `Hi ${name}, this is a friendly reminder that you have an appointment for ${templateParams?.[1] || service_type} today at ${templateParams?.[2]}. We look forward to seeing you!\n\n(Please reply "Yes" to confirm)` }
-               };
-          } else if (templateName === 'thank_you_simple' || templateName === 'review_request') {
-               overrideToFreeForm = true;
-               const reviewUrl = appointmentId ? `https://review-booking-system.onrender.com/api/r/${appointmentId}` : 'https://g.page/r/Cb40ziDcqQoHEAE/review';
-               freeFormPayload = {
-                   type: "text",
-                   text: { body: `Hi ${name}, thank you for visiting us for your ${service_type}. We hope you had a great experience! Could you please take a moment to leave us a review?\n\nLeave a review here: ${reviewUrl}` }
-               };
-          } else if (templateName === 'review_follow_up') {
-               overrideToFreeForm = true;
-               const reviewUrl = appointmentId ? `https://review-booking-system.onrender.com/api/r/${appointmentId}` : 'https://g.page/r/Cb40ziDcqQoHEAE/review';
-               freeFormPayload = {
-                   type: "text",
-                   text: { body: `Hi ${name}, this is a gentle follow-up from Dr. Saachi Shingrani's Dental Care regarding your recent ${service_type}. We would truly appreciate it if you could share your feedback with us: ${reviewUrl}` }
-               };
-          } else if (templateName === 'generic_clinic_msg') {
-               overrideToFreeForm = true;
-               freeFormPayload = {
-                   type: "text",
-                   text: { body: `Greetings from Dr. Saachi Shingrani's Dental Care, ${name}, we sincerely hope you are doing well. Please feel free to reach out to us or book your next appointment at your convenience or send a text here. 😊\n\nVisit our website: https://www.srsdentalcare.in\nCall us: +919004402797` }
-               };
-          } else if (templateName === 'appointment_cancelled') {
-               overrideToFreeForm = true;
-               freeFormPayload = {
-                   type: "text",
-                   text: { body: `Greetings ${name}, as requested, your appointment at Dr. Saachi Shingrani's Dental Care for your ${templateParams?.[1] || service_type} has been successfully cancelled.` }
-               };
-          } else if (templateName === 'appointment_rescheduled') {
-               overrideToFreeForm = true;
-               freeFormPayload = {
-                   type: "text",
-                   text: { body: `Greetings ${name}, your appointment at Dr. Saachi Shingrani's Dental Care has been updated to ${templateParams?.[1]} at ${templateParams?.[2]} for ${templateParams?.[3] || service_type}. The previous time slot is now cancelled. Looking forward to seeing you! 😊` }
-               };
-          }
+      if ((windowIsOpen || templateName === 'auto_reply_hello') && templateName && readableTemplateText) {
+           overrideToFreeForm = true;
+           freeFormPayload = {
+               type: "text",
+               text: { body: readableTemplateText }
+           };
       }
 
       if (overrideToFreeForm) {
@@ -161,7 +137,9 @@ export const sendWhatsAppMessage = async (phone: string, name: string, service_t
       } else if (customMessage) {
           inboxContent = customMessage;
       } else if (templateName) {
-          inboxContent = `[Template: ${templateName}]`;
+          inboxContent = readableTemplateText 
+              ? `[Meta Template Sent]\n\n${readableTemplateText}` 
+              : `[Template: ${templateName}]`;
       }
 
       const saveToInbox = async (sid: string) => {

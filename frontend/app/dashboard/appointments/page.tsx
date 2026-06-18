@@ -7,13 +7,42 @@ import { Calendar, Clock, User, Plus, Search, Loader2, CheckCircle, XCircle, Fil
 const inputCls = "w-full bg-neutral-100 dark:bg-neutral-950 border border-neutral-300 dark:border-neutral-800 rounded p-3 text-neutral-900 dark:text-white focus:border-neutral-900 dark:focus:border-white outline-none transition-colors";
 const labelCls = "block text-xs font-bold text-neutral-500 uppercase tracking-wider mb-1.5";
 
-const timeOptions = Array.from({ length: 24 }).flatMap((_, h) => 
+const SERVICES = [
+    "Routine Checkup",
+    "Teeth Whitening",
+    "Dental Implants",
+    "Invisible Braces (Invisalign)",
+    "Root Canal Treatment",
+    "Cosmetic Dentistry",
+    "Orthodontic Treatment",
+    "Periodontal Therapy",
+    "Other / Consult"
+];
+
+const allTimeOptions = Array.from({ length: 24 }).flatMap((_, h) => 
     ['00', '15', '30', '45'].map(m => {
       const hh = h.toString().padStart(2, '0');
-      const timeStr = `${hh}:${m}`;
-      return <option key={timeStr} value={timeStr}>{timeStr}</option>;
+      return `${hh}:${m}`;
     })
 );
+
+const getSlotForTime = (time: string) => {
+    if (!time) return 'Morning';
+    const [h, m] = time.split(':').map(Number);
+    const timeValue = h + m / 60;
+    if (timeValue >= 10 && timeValue <= 13) return 'Morning';
+    if (timeValue >= 14 && timeValue <= 17) return 'Afternoon';
+    if (timeValue >= 17.5 && timeValue <= 19.5) return 'Evening';
+    return ''; // outside bounds
+};
+
+const getTimesForSlot = (slot: string) => {
+    // If no slot is selected, return all valid times between 10am and 7:30pm
+    return allTimeOptions.filter(t => {
+        const s = getSlotForTime(t);
+        return slot ? s === slot : s !== '';
+    });
+};
 
 export default function AppointmentsPage() {
     const [appointments, setAppointments] = useState<any[]>([]);
@@ -32,11 +61,11 @@ export default function AppointmentsPage() {
     const [selectedAppointment, setSelectedAppointment] = useState<any>(null);
     const [isFollowUpNeeded, setIsFollowUpNeeded] = useState(false);
     const [canSendReview, setCanSendReview] = useState(false);
-    const [followUpData, setFollowUpData] = useState({ date: '', time: '', service: 'Consultation', notes: '' });
+    const [followUpData, setFollowUpData] = useState({ date: '', time: '', service: 'Routine Checkup', notes: '' });
 
     const [newAppointment, setNewAppointment] = useState({
         patient_id: '', appointment_date: '', appointment_time: '',
-        service_type: 'Consultation', preferred_slot: 'Morning',
+        service_type: 'Routine Checkup', preferred_slot: 'Morning',
         status: 'Booked', notes: '', business_id: businessId
     });
 
@@ -62,7 +91,7 @@ export default function AppointmentsPage() {
 
     const handleOpenAdd = () => {
         setEditingAppointment(null);
-        setNewAppointment({ patient_id: '', appointment_date: '', appointment_time: '', service_type: 'Consultation', preferred_slot: 'Morning', status: 'Booked', notes: '', business_id: businessId });
+        setNewAppointment({ patient_id: '', appointment_date: '', appointment_time: '', service_type: 'Routine Checkup', preferred_slot: 'Morning', status: 'Booked', notes: '', business_id: businessId });
         setShowAddModal(true);
     };
 
@@ -77,7 +106,7 @@ export default function AppointmentsPage() {
             business_id: appt.business_id,
             appointment_date: appt.appointment_date ? new Date(appt.appointment_date).toISOString().split('T')[0] : '',
             appointment_time: initialTime,
-            service_type: appt.service_type || 'Consultation',
+            service_type: appt.service_type || 'Routine Checkup',
             preferred_slot: appt.preferred_slot || 'Morning',
             status: appt.status === 'Requested' ? 'Booked' : (appt.status || 'Booked'),
             notes: appt.notes || ''
@@ -287,16 +316,26 @@ export default function AppointmentsPage() {
                                     <div><label className={labelCls}>Date</label><input required type="date" className={inputCls} value={newAppointment.appointment_date} onChange={e => setNewAppointment({...newAppointment, appointment_date: e.target.value})} /></div>
                                     <div>
                                         <label className={labelCls}>Time</label>
-                                        <select required className={inputCls} value={newAppointment.appointment_time} onChange={e => setNewAppointment({...newAppointment, appointment_time: e.target.value})}>
+                                        <select required className={inputCls} value={newAppointment.appointment_time} onChange={e => {
+                                            const time = e.target.value;
+                                            const slot = getSlotForTime(time) || newAppointment.preferred_slot;
+                                            setNewAppointment({...newAppointment, appointment_time: time, preferred_slot: slot});
+                                        }}>
                                             <option value="">Select Time</option>
-                                            {timeOptions}
+                                            {getTimesForSlot(newAppointment.preferred_slot).map(t => <option key={t} value={t}>{t}</option>)}
                                         </select>
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <label className={labelCls}>Slot</label>
-                                        <select required className={inputCls} value={newAppointment.preferred_slot} onChange={e => setNewAppointment({...newAppointment, preferred_slot: e.target.value})}>
+                                        <select required className={inputCls} value={newAppointment.preferred_slot} onChange={e => {
+                                            const slot = e.target.value;
+                                            const currentSlot = getSlotForTime(newAppointment.appointment_time);
+                                            let newTime = newAppointment.appointment_time;
+                                            if (currentSlot !== slot) newTime = '';
+                                            setNewAppointment({...newAppointment, preferred_slot: slot, appointment_time: newTime});
+                                        }}>
                                             <option value="Morning">Morning (10:00 - 1:00)</option>
                                             <option value="Afternoon">Afternoon (2:00 - 5:00)</option>
                                             <option value="Evening">Evening (5:30 - 7:30)</option>
@@ -305,8 +344,7 @@ export default function AppointmentsPage() {
                                     <div>
                                         <label className={labelCls}>Service</label>
                                         <select className={inputCls} value={newAppointment.service_type} onChange={e => setNewAppointment({...newAppointment, service_type: e.target.value})}>
-                                            <option>Consultation</option><option>Cleaning</option><option>Filling</option>
-                                            <option>Root Canal</option><option>Extraction</option><option>Ortho Checkup</option>
+                                            {SERVICES.map(s => <option key={s} value={s}>{s}</option>)}
                                         </select>
                                     </div>
                                 </div>
@@ -361,14 +399,14 @@ export default function AppointmentsPage() {
                                                 <label className={labelCls}>Time</label>
                                                 <select className={inputCls} value={followUpData.time} onChange={e => setFollowUpData({...followUpData, time: e.target.value})}>
                                                     <option value="">Select Time</option>
-                                                    {timeOptions}
+                                                    {getTimesForSlot('').map(t => <option key={t} value={t}>{t}</option>)}
                                                 </select>
                                             </div>
                                         </div>
                                         <div>
                                             <label className={labelCls}>Service</label>
                                             <select className={inputCls} value={followUpData.service} onChange={e => setFollowUpData({...followUpData, service: e.target.value})}>
-                                                <option>Consultation</option><option>Cleaning</option><option>Filling</option><option>Root Canal</option><option>Extraction</option>
+                                                {SERVICES.map(s => <option key={s} value={s}>{s}</option>)}
                                             </select>
                                         </div>
                                         <div><label className={labelCls}>Notes</label><textarea className={inputCls} rows={2} placeholder="Reason for follow-up..." value={followUpData.notes} onChange={e => setFollowUpData({...followUpData, notes: e.target.value})} /></div>

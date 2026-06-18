@@ -34,6 +34,7 @@ router.get('/webhook', verifyWebhook);
 router.post('/webhook', webhook);
 router.get('/business/:id', getBusiness);
 router.put('/business/:id', updateBusiness);
+router.get('/r/:appointmentId', trackReviewClick); // <-- Added the missing tracking route
 
 // Chat & Inbox
 import { getChats, getChatHistory, getMediaUrl, sendManualReply, sendMediaReply, updateCustomerName, deleteChatHistory } from '../controllers/chatController';

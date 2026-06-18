@@ -181,9 +181,13 @@ export const sendWhatsAppMessage = async (phone: string, name: string, service_t
                   throw errUS;
               }
           }
-          console.error(`[Meta API] Failed: ${JSON.stringify(error.response?.data || error.message)}`);
           throw error;
       }
+
+  } catch (error: any) {
+      console.error(`[Meta API] Failed: ${JSON.stringify(error.response?.data || error.message)}`);
+      throw error;
+  }
 };
 
 import FormData from 'form-data';

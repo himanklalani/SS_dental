@@ -312,14 +312,10 @@ export const createPublicBooking = async (req: Request, res: Response) => {
         }
 
         // ── 3. Patient Lookup Strategy ───────────────────────────────────────────
-        // Rule: ONLY reuse an existing patient if BOTH name AND phone match exactly.
-        // Case A: same name, different number  → create new patient
-        // Case B: same number, different name  → create new patient
-        // Case C: both match                   → reuse existing patient
-        // Case D: completely new               → create new patient
+        // Rule: A patient is uniquely identified by their phone number.
+        // If a patient exists with the same phone, reuse that patient.
         let patient = await Patient.findOne({
             business_id,
-            name: normalizedName,
             phone: normalizedPhone
         });
 

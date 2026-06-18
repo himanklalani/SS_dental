@@ -45,8 +45,36 @@ export const trackReviewClick = async (req: Request, res: Response) => {
         const business = appointment.business_id as any;
         const targetUrl = business.google_review_url || 'https://g.page/r/Cb40ziDcqQoHEAE/review';
         
-        // Redirect the user
-        res.redirect(targetUrl);
+        // Send an HTML page to break out of black-screen hangs in WhatsApp WebView
+        res.send(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="utf-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1">
+                <title>Redirecting...</title>
+                <meta http-equiv="refresh" content="1;url=${targetUrl}">
+                <style>
+                    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background-color: #f8f9fa; }
+                    .loader { border: 4px solid #e0e0e0; border-top: 4px solid #128C7E; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto; }
+                    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+                    .container { text-align: center; }
+                    p { margin-top: 16px; color: #555; font-size: 16px; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="loader"></div>
+                    <p>Redirecting to Google Reviews...</p>
+                </div>
+                <script>
+                    setTimeout(function() {
+                        window.location.href = "${targetUrl}";
+                    }, 500);
+                </script>
+            </body>
+            </html>
+        `);
     } catch (error) {
         console.error('Review Track Error:', error);
         res.status(500).send('Internal Server Error');

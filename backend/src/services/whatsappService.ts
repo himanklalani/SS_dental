@@ -122,23 +122,18 @@ export const sendWhatsAppMessage = async (phone: string, name: string, service_t
               ];
           }
 
-          // If review request, add a URL button parameter targeting our tracking proxy
+          // If review request, append the full URL proxy to the body parameters instead of a button
           if (templateName === 'review_request' || templateName === 'review_follow_up') {
               if (!appointmentId) throw new Error("Appointment ID required for review proxy tracking");
               
-              const appDomain = process.env.APP_DOMAIN || 'http://localhost:5000';
-              payload.template.components.push({
-                  type: "button",
-                  sub_type: "url",
-                  index: "0",
-                  parameters: [
-                      {
-                          type: "text",
-                          // The suffix matches the variable in the Meta template button URL config. e.g. https://domain.com/{{1}}
-                          text: `api/r/${appointmentId}` 
-                      }
-                  ]
-              });
+              const appDomain = 'https://review-booking-system.onrender.com';
+              const trackingUrl = `${appDomain}/api/r/${appointmentId}`;
+              
+              // Find the body component and append the link as the next variable (e.g. {{3}})
+              const bodyComponent = payload.template.components.find((c: any) => c.type === 'body');
+              if (bodyComponent && bodyComponent.parameters) {
+                  bodyComponent.parameters.push({ type: 'text', text: trackingUrl });
+              }
           }
       } else {
           // Send as freestyle Text Message

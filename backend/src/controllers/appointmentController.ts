@@ -272,9 +272,11 @@ export const updateAppointment = async (req: Request, res: Response) => {
 
 export const createPublicBooking = async (req: Request, res: Response) => {
     try {
-        const { name, phone, email, date, time, service_type, preferred_slot, business_id, notes, message, api_key } = req.body;
+        const { name, phone, email, date, time, service_type, treatment, preferred_slot, business_id, notes, message, api_key } = req.body;
         
-        if (!business_id || !name || !phone || !date || (!preferred_slot && !time) || !service_type || !api_key) {
+        const finalServiceType = service_type || treatment || 'Routine Checkup';
+
+        if (!business_id || !name || !phone || !date || (!preferred_slot && !time) || !finalServiceType || !api_key) {
              return res.status(400).json({ error: 'Missing required fields' });
         }
 
@@ -328,7 +330,7 @@ export const createPublicBooking = async (req: Request, res: Response) => {
         }
 
         // ── 4. Format Service Type to Title Case (matches Dashboard options) ────────
-        const formattedService = service_type
+        const formattedService = finalServiceType
             .trim()
             .split(' ')
             .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())

@@ -390,8 +390,11 @@ export default function AppointmentsPage() {
                                         </select>
                                     </div>
                                     <div>
-                                        <label className={labelCls}>Service</label>
+                                        <label className={labelCls}>Treatment</label>
                                         <select className={inputCls} value={newAppointment.service_type} onChange={e => setNewAppointment({...newAppointment, service_type: e.target.value})}>
+                                            {!SERVICES.includes(newAppointment.service_type) && newAppointment.service_type && (
+                                                <option value={newAppointment.service_type}>{newAppointment.service_type} (From Web)</option>
+                                            )}
                                             {SERVICES.map(s => <option key={s} value={s}>{s}</option>)}
                                         </select>
                                     </div>

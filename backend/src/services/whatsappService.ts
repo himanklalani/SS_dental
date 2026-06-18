@@ -86,11 +86,19 @@ export const sendWhatsAppMessage = async (phone: string, name: string, service_t
           console.log(`[Meta API] Smart Routing: Intercepted ${templateName} -> Sending Free Form Message to ${cleanPhone}`);
       } else if (templateName) {
           // Default backwards compatible mapping if templateParams not provided
-          const defaultParams = [
-              { type: "text", text: name },
-              { type: "text", text: business.name },
-              { type: "text", text: customMessage || service_type }
-          ];
+          // Note: review templates have hardcoded clinic names in Meta, so they only take Name (1) and Service (2).
+          const isReviewTemplate = templateName === 'review_request' || templateName === 'review_follow_up';
+          
+          const defaultParams = isReviewTemplate 
+              ? [
+                  { type: "text", text: name },
+                  { type: "text", text: customMessage || service_type }
+                ]
+              : [
+                  { type: "text", text: name },
+                  { type: "text", text: business.name },
+                  { type: "text", text: customMessage || service_type }
+                ];
 
           payload.type = "template";
           payload.template = {

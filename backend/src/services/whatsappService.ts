@@ -147,20 +147,43 @@ export const sendWhatsAppMessage = async (phone: string, name: string, service_t
       }
 
       console.log(`[Meta API] Sending message to ${cleanPhone}...`);
-      const response = await axios.post(url, payload, {
-          headers: {
-              'Authorization': `Bearer ${META_API_TOKEN}`,
-              'Content-Type': 'application/json'
-          }
-      });
-      
-      console.log(`[Meta API] Message sent! SID: ${response.data.messages?.[0]?.id}`);
-      return { sid: response.data.messages?.[0]?.id };
 
-  } catch (error: any) {
-      console.error(`[Meta API] Failed: ${JSON.stringify(error.response?.data || error.message)}`);
-      throw error;
-  }
+      const sendPayload = async (currentPayload: any) => {
+          return await axios.post(url, currentPayload, {
+              headers: {
+                  'Authorization': `Bearer ${META_API_TOKEN}`,
+                  'Content-Type': 'application/json'
+              }
+          });
+      };
+
+      try {
+          const response = await sendPayload(payload);
+          console.log(`[Meta API] Message sent! SID: ${response.data.messages?.[0]?.id}`);
+          return { sid: response.data.messages?.[0]?.id };
+      } catch (error: any) {
+          // If template language error (132001), try en_US and then en_GB
+          if (error.response?.data?.error?.code === 132001 && payload.type === 'template') {
+              console.log(`[Meta API] Language code ${payload.template.language.code} failed for template ${templateName}. Retrying with en_US...`);
+              payload.template.language.code = 'en_US';
+              try {
+                  const responseUS = await sendPayload(payload);
+                  console.log(`[Meta API] Message sent with en_US! SID: ${responseUS.data.messages?.[0]?.id}`);
+                  return { sid: responseUS.data.messages?.[0]?.id };
+              } catch (errUS: any) {
+                  if (errUS.response?.data?.error?.code === 132001) {
+                      console.log(`[Meta API] Language code en_US failed. Retrying with en_GB...`);
+                      payload.template.language.code = 'en_GB';
+                      const responseGB = await sendPayload(payload);
+                      console.log(`[Meta API] Message sent with en_GB! SID: ${responseGB.data.messages?.[0]?.id}`);
+                      return { sid: responseGB.data.messages?.[0]?.id };
+                  }
+                  throw errUS;
+              }
+          }
+          console.error(`[Meta API] Failed: ${JSON.stringify(error.response?.data || error.message)}`);
+          throw error;
+      }
 };
 
 import FormData from 'form-data';

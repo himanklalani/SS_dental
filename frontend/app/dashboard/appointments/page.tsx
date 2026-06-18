@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { getAppointments, createAppointment, getPatients, updateAppointment, deleteAppointment } from '../../lib/api';
-import { Calendar, Clock, User, Plus, Search, Loader2, CheckCircle, XCircle, FileText, Edit, Trash2, Star, MessageSquare, MousePointerClick } from 'lucide-react';
+import { Calendar, Clock, User, Plus, Search, Loader2, CheckCircle, XCircle, FileText, Edit, Trash2, Star, MessageSquare, MousePointerClick, RefreshCw } from 'lucide-react';
 
 const inputCls = "w-full bg-neutral-100 dark:bg-neutral-950 border border-neutral-300 dark:border-neutral-800 rounded p-3 text-neutral-900 dark:text-white focus:border-neutral-900 dark:focus:border-white outline-none transition-colors";
 const labelCls = "block text-xs font-bold text-neutral-500 uppercase tracking-wider mb-1.5";
@@ -52,10 +52,12 @@ export default function AppointmentsPage() {
     const [showAddModal, setShowAddModal] = useState(false);
     const [editingAppointment, setEditingAppointment] = useState<any>(null);
     const [filterStatus, setFilterStatus] = useState('');
+    const [filterDate, setFilterDate] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
     const [page, setPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
     const [businessId] = useState(process.env.NEXT_PUBLIC_BUSINESS_ID || '69edf7401e9164e3fd73e073');
+    const [refreshing, setRefreshing] = useState(false);
 
     const [showCompletionModal, setShowCompletionModal] = useState(false);
     const [selectedAppointment, setSelectedAppointment] = useState<any>(null);
@@ -75,13 +77,13 @@ export default function AppointmentsPage() {
     useEffect(() => {
         const timer = setTimeout(() => { fetchData(); }, 300);
         return () => clearTimeout(timer);
-    }, [businessId, page, filterStatus, searchQuery]);
+    }, [businessId, page, filterStatus, filterDate, searchQuery]);
 
-    const fetchData = async () => {
-        setLoading(true); setError(null);
+    const fetchData = async (isRefresh = false) => {
+        if (isRefresh) setRefreshing(true); else { setLoading(true); setError(null); }
         try {
             const [apptRes, patientData] = await Promise.all([
-                getAppointments(businessId, { page, limit: 10, status: filterStatus, search: searchQuery }),
+                getAppointments(businessId, { page, limit: 10, status: filterStatus, search: searchQuery, date: filterDate }),
                 getPatients(businessId)
             ]);
             setAppointments(apptRes.data || []);
@@ -89,7 +91,7 @@ export default function AppointmentsPage() {
             setPatients(patientData);
         } catch (err: any) {
             setError(err.response?.data?.error || "Failed to load data.");
-        } finally { setLoading(false); }
+        } finally { setLoading(false); setRefreshing(false); }
     };
 
     const handleOpenAdd = () => {
@@ -193,6 +195,8 @@ export default function AppointmentsPage() {
                             className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded pl-9 pr-3 py-2 text-neutral-900 dark:text-white text-sm outline-none focus:border-neutral-900 dark:focus:border-white w-48"
                             value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
                     </div>
+                    <input type="date" className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded px-3 py-2 text-neutral-900 dark:text-white text-sm outline-none"
+                        value={filterDate} onChange={(e) => { setFilterDate(e.target.value); setPage(1); }} />
                     <select className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded px-3 py-2 text-neutral-900 dark:text-white text-sm outline-none"
                         onChange={(e) => { setFilterStatus(e.target.value); setPage(1); }}>
                         <option value="">All Status</option>
@@ -202,6 +206,11 @@ export default function AppointmentsPage() {
                         <option value="Completed">Completed</option>
                         <option value="Cancelled">Cancelled</option>
                     </select>
+                    <button onClick={() => fetchData(true)} disabled={refreshing}
+                        className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-neutral-500 hover:text-neutral-900 dark:hover:text-white bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded hover:border-neutral-400 dark:hover:border-neutral-600 transition-all disabled:opacity-50">
+                        <RefreshCw size={13} className={refreshing ? 'animate-spin' : ''} />
+                        Refresh
+                    </button>
                     <button onClick={handleOpenAdd} className="flex items-center gap-2 bg-neutral-900 dark:bg-white text-white dark:text-black px-4 py-2 rounded font-bold text-sm uppercase tracking-wider hover:bg-neutral-700 dark:hover:bg-neutral-200 transition-colors">
                         <Plus size={16} /><span>New Booking</span>
                     </button>

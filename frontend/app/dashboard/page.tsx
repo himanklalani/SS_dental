@@ -1,26 +1,27 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { getAnalytics } from '../lib/api';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { MousePointer, Send, Loader2, Activity } from 'lucide-react';
+import { MousePointer, Send, Loader2, Activity, RefreshCw } from 'lucide-react';
 
 export default function Dashboard() {
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [businessId] = useState(process.env.NEXT_PUBLIC_BUSINESS_ID || '69edf7401e9164e3fd73e073');
 
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const data = await getAnalytics(businessId);
-        setStats(data);
-      } catch {
-        setStats({ totalSent: 0, totalClicked: 0, clickThroughRate: 0 });
-      } finally { setLoading(false); }
-    };
-    fetchStats();
+  const fetchStats = useCallback(async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true); else setLoading(true);
+    try {
+      const data = await getAnalytics(businessId);
+      setStats(data);
+    } catch {
+      setStats({ totalSent: 0, totalClicked: 0, clickThroughRate: 0 });
+    } finally { setLoading(false); setRefreshing(false); }
   }, [businessId]);
+
+  useEffect(() => { fetchStats(); }, [fetchStats]);
 
   if (loading) return <div className="flex h-[50vh] items-center justify-center"><Loader2 className="animate-spin text-neutral-400" size={32} /></div>;
 
@@ -37,9 +38,16 @@ export default function Dashboard() {
           <h1 className="text-2xl font-semibold text-neutral-900 dark:text-white tracking-tight">System Overview</h1>
           <p className="text-neutral-500 mt-1 text-sm">Review engagement and click tracking.</p>
         </div>
-        <div className="flex items-center gap-2 px-3 py-1 bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded text-xs font-mono text-neutral-800 dark:text-white">
-          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-          SYSTEM_ONLINE
+        <div className="flex items-center gap-3">
+          <button onClick={() => fetchStats(true)} disabled={refreshing}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-neutral-500 hover:text-neutral-900 dark:hover:text-white bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded hover:border-neutral-400 dark:hover:border-neutral-600 transition-all disabled:opacity-50">
+            <RefreshCw size={13} className={refreshing ? 'animate-spin' : ''} />
+            Refresh
+          </button>
+          <div className="flex items-center gap-2 px-3 py-1 bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded text-xs font-mono text-neutral-800 dark:text-white">
+            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+            SYSTEM_ONLINE
+          </div>
         </div>
       </div>
 

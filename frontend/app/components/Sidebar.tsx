@@ -61,12 +61,12 @@ const Sidebar = () => {
         <div className="fixed inset-0 bg-black/60 z-40 md:hidden backdrop-blur-sm" onClick={() => setIsOpen(false)} />
       )}
 
-      {/* Sidebar */}
+      {/* Sidebar - desktop renders inside layout wrapper, mobile renders as fixed overlay */}
       <div className={`
         fixed top-0 left-0 h-full z-50 w-64 transform transition-transform duration-300 ease-out
-        bg-white dark:bg-neutral-900 border-r border-neutral-200 dark:border-neutral-800
+        bg-white dark:bg-neutral-900
         ${isOpen ? 'translate-x-0 shadow-2xl shadow-black/20' : '-translate-x-full'}
-        md:translate-x-0 md:static md:h-screen md:shadow-none
+        md:relative md:translate-x-0 md:shadow-none md:h-auto md:flex md:flex-col md:flex-1
       `}>
         <div className="flex flex-col h-full">
           {/* Logo */}

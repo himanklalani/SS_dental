@@ -1,8 +1,10 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { getPatients, createPatient, updatePatient, deletePatient } from '../../lib/api';
-import { User, Plus, Search, Loader2, Phone, Mail, MapPin, Edit, Trash2 } from 'lucide-react';
+import { User, Plus, Search, Loader2, Phone, Mail, MapPin, Edit, Trash2, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
+
+const PAGE_SIZE = 12;
 
 // Shared input class for forms - works in both light and dark
 const inputCls = "w-full bg-neutral-100 dark:bg-neutral-950 border border-neutral-300 dark:border-neutral-800 rounded p-3 text-neutral-900 dark:text-white focus:border-neutral-900 dark:focus:border-white outline-none transition-colors";
@@ -11,9 +13,11 @@ const labelCls = "block text-xs font-bold text-neutral-500 uppercase tracking-wi
 export default function PatientsPage() {
     const [patients, setPatients] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
     const [showAddModal, setShowAddModal] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
     const [businessId] = useState(process.env.NEXT_PUBLIC_BUSINESS_ID || '69edf7401e9164e3fd73e073');
 
     const [formData, setFormData] = useState({
@@ -21,9 +25,8 @@ export default function PatientsPage() {
         medical_history: '', business_id: businessId
     });
 
-    useEffect(() => { fetchPatients(); }, [businessId]);
-
-    const fetchPatients = async () => {
+    const fetchPatients = useCallback(async (isRefresh = false) => {
+        if (isRefresh) setRefreshing(true); else setLoading(true);
         try {
             const data = await getPatients(businessId);
             setPatients(data);
@@ -31,8 +34,11 @@ export default function PatientsPage() {
             console.error(error);
         } finally {
             setLoading(false);
+            setRefreshing(false);
         }
-    };
+    }, [businessId]);
+
+    useEffect(() => { fetchPatients(); }, [fetchPatients]);
 
     const handleOpenAdd = () => {
         setEditingId(null);
@@ -82,6 +88,10 @@ export default function PatientsPage() {
         p.name.toLowerCase().includes(searchTerm.toLowerCase()) || p.phone.includes(searchTerm)
     );
 
+    const totalPages = Math.max(1, Math.ceil(filteredPatients.length / PAGE_SIZE));
+    const safeCurrentPage = Math.min(currentPage, totalPages);
+    const paginatedPatients = filteredPatients.slice((safeCurrentPage - 1) * PAGE_SIZE, safeCurrentPage * PAGE_SIZE);
+
     if (loading) return <div className="flex justify-center p-10"><Loader2 className="animate-spin text-neutral-500" /></div>;
 
     return (
@@ -90,12 +100,19 @@ export default function PatientsPage() {
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-neutral-200 dark:border-neutral-800 pb-6">
                 <div>
                     <h1 className="text-2xl font-semibold text-neutral-900 dark:text-white tracking-tight">Patients</h1>
-                    <p className="text-neutral-500 mt-1 text-sm">Manage patient records and history.</p>
+                    <p className="text-neutral-500 mt-1 text-sm">{patients.length} total patients · Manage patient records and history.</p>
                 </div>
-                <button onClick={handleOpenAdd} className="flex items-center gap-2 bg-neutral-900 dark:bg-white text-white dark:text-black px-4 py-2 rounded font-bold text-sm uppercase tracking-wider hover:bg-neutral-700 dark:hover:bg-neutral-200 transition-colors">
-                    <Plus size={16} />
-                    <span>Add Patient</span>
-                </button>
+                <div className="flex items-center gap-2">
+                    <button onClick={() => fetchPatients(true)} disabled={refreshing}
+                        className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-neutral-500 hover:text-neutral-900 dark:hover:text-white bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded hover:border-neutral-400 dark:hover:border-neutral-600 transition-all disabled:opacity-50">
+                        <RefreshCw size={13} className={refreshing ? 'animate-spin' : ''} />
+                        Refresh
+                    </button>
+                    <button onClick={handleOpenAdd} className="flex items-center gap-2 bg-neutral-900 dark:bg-white text-white dark:text-black px-4 py-2 rounded font-bold text-sm uppercase tracking-wider hover:bg-neutral-700 dark:hover:bg-neutral-200 transition-colors">
+                        <Plus size={16} />
+                        <span>Add Patient</span>
+                    </button>
+                </div>
             </div>
 
             {/* Search */}
@@ -112,7 +129,7 @@ export default function PatientsPage() {
 
             {/* Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredPatients.map(patient => (
+                {paginatedPatients.map(patient => (
                     <div key={patient._id} className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded p-4 hover:border-neutral-300 dark:hover:border-neutral-700 transition-all group relative">
                         <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                             <button onClick={() => handleOpenEdit(patient)} className="p-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded text-neutral-500 hover:text-neutral-900 dark:hover:text-white transition-colors">
@@ -168,6 +185,31 @@ export default function PatientsPage() {
                     </div>
                 )}
             </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+                <div className="flex items-center justify-between pt-4 border-t border-neutral-200 dark:border-neutral-800">
+                    <p className="text-xs text-neutral-400 font-mono">Page {safeCurrentPage} of {totalPages} &middot; {filteredPatients.length} patients</p>
+                    <div className="flex items-center gap-1">
+                        <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={safeCurrentPage === 1}
+                            className="p-2 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-500 hover:text-neutral-900 dark:hover:text-white disabled:opacity-30 transition-colors">
+                            <ChevronLeft size={16} />
+                        </button>
+                        {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
+                            <button key={p} onClick={() => setCurrentPage(p)}
+                                className={`w-8 h-8 text-xs rounded font-medium transition-colors ${
+                                    p === safeCurrentPage
+                                        ? 'bg-neutral-900 dark:bg-white text-white dark:text-black'
+                                        : 'hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-500'
+                                }`}>{p}</button>
+                        ))}
+                        <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={safeCurrentPage === totalPages}
+                            className="p-2 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-500 hover:text-neutral-900 dark:hover:text-white disabled:opacity-30 transition-colors">
+                            <ChevronRight size={16} />
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* Modal */}
             {showAddModal && (

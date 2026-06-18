@@ -102,6 +102,18 @@ export const sendWhatsAppMessage = async (phone: string, name: string, service_t
                    type: "text",
                    text: { body: `Greetings from Dr. Saachi Shingrani's Dental Care, ${name}, we sincerely hope you are doing well. Please feel free to reach out to us or book your next appointment at your convenience or send a text here. 😊\n\nVisit our website: https://www.srsdentalcare.in\nCall us: +919004402797` }
                };
+          } else if (templateName === 'appointment_cancelled') {
+               overrideToFreeForm = true;
+               freeFormPayload = {
+                   type: "text",
+                   text: { body: `Greetings ${name}, as requested, your appointment at Dr. Saachi Shingrani's Dental Care for your ${templateParams?.[1] || service_type} has been successfully cancelled.` }
+               };
+          } else if (templateName === 'appointment_rescheduled') {
+               overrideToFreeForm = true;
+               freeFormPayload = {
+                   type: "text",
+                   text: { body: `Greetings ${name}, your appointment at Dr. Saachi Shingrani's Dental Care has been updated to ${templateParams?.[1]} at ${templateParams?.[2]} for ${templateParams?.[3] || service_type}. The previous time slot is now cancelled. Looking forward to seeing you! 😊` }
+               };
           }
       }
 

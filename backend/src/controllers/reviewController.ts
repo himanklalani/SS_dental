@@ -322,6 +322,16 @@ export const webhook = async (req: Request, res: Response) => {
             // Handle Incoming Messages (e.g. from patient sending STOP or Auto-Reply)
             if (value.messages && value.messages[0]) {
                 const messageObj = value.messages[0];
+                
+                // Deduplicate incoming messages to prevent hallucination / double processing on Meta webhook retries
+                if (messageObj.id) {
+                    const existingMsg = await Message.findOne({ whatsapp_message_id: messageObj.id });
+                    if (existingMsg) {
+                        console.log(`[Webhook] Duplicate message ID ${messageObj.id} detected. Ignoring retry.`);
+                        return res.status(200).send('EVENT_RECEIVED');
+                    }
+                }
+
                 let From = messageObj.from; // Phone number without +
                 
                 // Ensure from has +91 or + if needed, Meta often sends without +. 

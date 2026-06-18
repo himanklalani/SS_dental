@@ -57,30 +57,14 @@ export const sendWhatsAppMessage = async (phone: string, name: string, service_t
           } else if (templateName === 'booking_confirmations') {
                overrideToFreeForm = true;
                freeFormPayload = {
-                   type: "interactive",
-                   interactive: {
-                       type: "button",
-                       body: { text: `Hi ${name}, your appointment for ${templateParams?.[3] || service_type} is scheduled on ${templateParams?.[1]} at ${templateParams?.[2]} at Dr. Saachi Shingrani's Dental Care. See you soon!` },
-                       action: {
-                           buttons: [
-                               { type: "reply", reply: { id: "ok_confirmed", title: "Okay, Confirmed" } }
-                           ]
-                       }
-                   }
+                   type: "text",
+                   text: { body: `Hi ${name}, your appointment for ${templateParams?.[3] || service_type} is scheduled on ${templateParams?.[1]} at ${templateParams?.[2]} at Dr. Saachi Shingrani's Dental Care. See you soon!\n\n(Please reply "Yes" to confirm)` }
                };
           } else if (templateName === 'appointment_reminder') {
                overrideToFreeForm = true;
                freeFormPayload = {
-                   type: "interactive",
-                   interactive: {
-                       type: "button",
-                       body: { text: `Hi ${name}, this is a friendly reminder that you have an appointment for ${templateParams?.[1] || service_type} today at ${templateParams?.[2]}. We look forward to seeing you!` },
-                       action: {
-                           buttons: [
-                               { type: "reply", reply: { id: "ok_confirm_remind", title: "Ok, Confirm" } }
-                           ]
-                       }
-                   }
+                   type: "text",
+                   text: { body: `Hi ${name}, this is a friendly reminder that you have an appointment for ${templateParams?.[1] || service_type} today at ${templateParams?.[2]}. We look forward to seeing you!\n\n(Please reply "Yes" to confirm)` }
                };
           } else if (templateName === 'thank_you_simple' || templateName === 'review_request') {
                overrideToFreeForm = true;

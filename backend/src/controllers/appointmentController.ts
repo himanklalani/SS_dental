@@ -126,7 +126,7 @@ export const createAppointment = async (req: Request, res: Response) => {
                         appointment.service_type, 
                         business._id, 
                         undefined, 
-                        'booking_confirmation',
+                        'booking_confirmations',
                         undefined,
                         [patient.name, tDate, tTime, appointment.service_type]
                     );
@@ -203,7 +203,7 @@ export const updateAppointment = async (req: Request, res: Response) => {
                  try {
                      const tDate = new Date(newDate).toLocaleDateString();
                      const tTime = new Date(newDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                     await sendWhatsAppMessage(patient.phone, patient.name, updatedAppointment.service_type, business._id, undefined, 'booking_confirmation', undefined, [patient.name, tDate, tTime, updatedAppointment.service_type]);
+                     await sendWhatsAppMessage(patient.phone, patient.name, updatedAppointment.service_type, business._id, undefined, 'booking_confirmations', undefined, [patient.name, tDate, tTime, updatedAppointment.service_type]);
                  } catch (err) { console.error('Failed to send confirmation message', err); }
              }
         } else if (isDateChanged && !wasRequested && isNowApproved) {

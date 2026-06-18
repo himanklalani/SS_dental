@@ -299,7 +299,7 @@ export default function InboxPage() {
                                 <div 
                                     key={chat._id} 
                                     onClick={() => setSelectedChat(chat)}
-                                    className={`p-4 border-b border-gray-100 cursor-pointer transition hover:bg-gray-50 flex gap-3 ${selectedChat?._id === chat._id ? 'bg-blue-50 md:border-l-4 md:border-l-blue-500' : ''}`}
+                                    className={`p-4 border-b border-gray-100 cursor-pointer transition-all duration-200 hover:bg-gray-50 flex gap-3 animate-in fade-in slide-in-from-bottom-2 ${selectedChat?._id === chat._id ? 'bg-blue-50 md:border-l-4 md:border-l-blue-500' : ''}`}
                                 >
                                     <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold shrink-0 text-lg">
                                         {initial}
@@ -338,7 +338,7 @@ export default function InboxPage() {
             </div>
 
             {/* Chat Thread */}
-            <div className={`flex-1 flex flex-col bg-[#efeae2] ${selectedChat ? 'flex' : 'hidden md:flex'}`}>
+            <div className={`flex-1 flex flex-col bg-[#efeae2] animate-in fade-in slide-in-from-right-8 md:slide-in-from-none duration-300 ${selectedChat ? 'flex' : 'hidden md:flex'}`}>
                 {selectedChat ? (
                     <>
                         {/* Chat Header */}
@@ -402,7 +402,7 @@ export default function InboxPage() {
                             {messages.map((msg, idx) => {
                                 const isOutbound = msg.direction === 'outbound';
                                 return (
-                                    <div key={msg._id || idx} className={`flex items-center gap-2 group ${isOutbound ? 'justify-end' : 'justify-start'}`}>
+                                    <div key={msg._id || idx} className={`flex items-center gap-2 group animate-in fade-in slide-in-from-bottom-2 duration-300 ${isOutbound ? 'justify-end' : 'justify-start'}`}>
                                         {!isOutbound && (
                                             <button 
                                                 onClick={() => setReplyingToMessage(msg)}
@@ -581,7 +581,7 @@ export default function InboxPage() {
                                 <input
                                     type="text"
                                     placeholder={isWindowOpen() ? (selectedFile ? "Add a caption..." : "Type a message...") : "Window closed. Cannot send manual messages."}
-                                    className="flex-1 bg-white border-none rounded-full px-4 md:px-5 py-2.5 md:py-3 outline-none focus:ring-2 focus:ring-blue-500 shadow-sm disabled:bg-gray-100 disabled:cursor-not-allowed text-sm md:text-base"
+                                    className="flex-1 bg-white border-none rounded-full px-4 md:px-5 py-2.5 md:py-3 outline-none focus:ring-2 focus:ring-blue-500 shadow-sm disabled:bg-gray-100 disabled:cursor-not-allowed text-sm md:text-base transition-all duration-300"
                                     value={newMessage}
                                     onChange={(e) => setNewMessage(e.target.value)}
                                     disabled={!isWindowOpen() || sending}

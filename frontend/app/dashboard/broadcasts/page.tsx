@@ -131,6 +131,15 @@ export default function BroadcastsPage() {
                                     Broadcasts are sent using your background queue. This ensures Meta API rate limits are respected and your server doesn't time out.
                                 </p>
                             </div>
+
+                            <div className="bg-amber-50 p-4 rounded-lg border border-amber-100 mt-4">
+                                <h4 className="text-sm font-semibold text-amber-800 mb-1 flex items-center gap-1">
+                                    <AlertCircle className="w-4 h-4" /> Meta API Charges
+                                </h4>
+                                <p className="text-xs text-amber-700 mt-1">
+                                    Meta charges approximately <strong>₹0.72 per message</strong> for Marketing/Broadcast templates sent to Indian numbers.
+                                </p>
+                            </div>
                         </div>
                     </div>
                 </div>

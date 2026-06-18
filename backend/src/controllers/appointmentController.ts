@@ -272,9 +272,9 @@ export const updateAppointment = async (req: Request, res: Response) => {
 
 export const createPublicBooking = async (req: Request, res: Response) => {
     try {
-        const { name, phone, email, date, service_type, preferred_slot, business_id, notes, api_key } = req.body;
+        const { name, phone, email, date, time, service_type, preferred_slot, business_id, notes, message, api_key } = req.body;
         
-        if (!business_id || !name || !phone || !date || !preferred_slot || !service_type || !api_key) {
+        if (!business_id || !name || !phone || !date || (!preferred_slot && !time) || !service_type || !api_key) {
              return res.status(400).json({ error: 'Missing required fields' });
         }
 
@@ -327,18 +327,36 @@ export const createPublicBooking = async (req: Request, res: Response) => {
             await patient.save();
         }
 
-        // ── 4. Create Appointment ────────────────────────────────────────────────
+        // ── 4. Format Service Type to Title Case (matches Dashboard options) ────────
+        const formattedService = service_type
+            .trim()
+            .split(' ')
+            .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+            .join(' ');
+
+        // ── 5. Combine Date and Time (if provided) ───────────────────────────────
+        let finalDate = new Date(date);
+        if (time) {
+            const [hours, minutes] = time.split(':');
+            if (hours && minutes) {
+                finalDate.setHours(parseInt(hours, 10));
+                finalDate.setMinutes(parseInt(minutes, 10));
+            }
+        }
+
+        // ── 6. Create Appointment ────────────────────────────────────────────────
         const doctor = await getDefaultDoctor(business_id);
+        const finalNotes = (notes || message || '').trim();
 
         const appointment = new Appointment({
             business_id,
             patient_id: patient._id,
             doctor_id: doctor._id,
-            appointment_date: new Date(date),
-            service_type: service_type.trim().toLowerCase(),
+            appointment_date: finalDate,
+            service_type: formattedService,
             status: 'Requested',
-            preferred_slot,
-            notes: notes ? notes.trim() : undefined,
+            preferred_slot: preferred_slot || 'Morning',
+            notes: finalNotes ? finalNotes : undefined,
             duration_minutes: 15
         });
 

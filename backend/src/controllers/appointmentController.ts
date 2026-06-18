@@ -117,8 +117,10 @@ export const createAppointment = async (req: Request, res: Response) => {
 
             if (patient && doctor && business) {
                 try {
-                    const tDate = new Date(appointment.appointment_date).toLocaleDateString();
-                    const tTime = new Date(appointment.appointment_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    const timeOpts: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' };
+                    const dateOpts: Intl.DateTimeFormatOptions = { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Asia/Kolkata' };
+                    const tDate = new Date(appointment.appointment_date).toLocaleDateString('en-IN', dateOpts);
+                    const tTime = new Date(appointment.appointment_date).toLocaleTimeString('en-US', timeOpts);
                     
                     await sendWhatsAppMessage(
                         patient.phone, 
@@ -201,8 +203,10 @@ export const updateAppointment = async (req: Request, res: Response) => {
              const patient = await Patient.findById(updatedAppointment.patient_id);
              if (patient && patient.phone && business && newDate) {
                  try {
-                     const tDate = new Date(newDate).toLocaleDateString();
-                     const tTime = new Date(newDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                     const timeOpts: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' };
+                     const dateOpts: Intl.DateTimeFormatOptions = { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Asia/Kolkata' };
+                     const tDate = new Date(newDate).toLocaleDateString('en-IN', dateOpts);
+                     const tTime = new Date(newDate).toLocaleTimeString('en-US', timeOpts);
                      await sendWhatsAppMessage(patient.phone, patient.name, updatedAppointment.service_type, business._id, undefined, 'booking_confirmations', undefined, [patient.name, tDate, tTime, updatedAppointment.service_type]);
                  } catch (err) { console.error('Failed to send confirmation message', err); }
              }
@@ -212,8 +216,10 @@ export const updateAppointment = async (req: Request, res: Response) => {
              const patient = await Patient.findById(updatedAppointment.patient_id);
              if (patient && patient.phone && business && newDate) {
                  try {
-                     const tDate = new Date(newDate).toLocaleDateString();
-                     const tTime = new Date(newDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                     const timeOpts: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' };
+                     const dateOpts: Intl.DateTimeFormatOptions = { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Asia/Kolkata' };
+                     const tDate = new Date(newDate).toLocaleDateString('en-IN', dateOpts);
+                     const tTime = new Date(newDate).toLocaleTimeString('en-US', timeOpts);
                      await sendWhatsAppMessage(patient.phone, patient.name, updatedAppointment.service_type, business._id, undefined, 'appointment_rescheduled', undefined, [patient.name, tDate, tTime, updatedAppointment.service_type]);
                  } catch (err) { console.error('Failed to send reschedule message', err); }
              }

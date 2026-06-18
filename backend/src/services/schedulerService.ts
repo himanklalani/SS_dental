@@ -87,7 +87,8 @@ async function processReminder(appointmentId: string, isFollowUp: boolean = fals
 
         if (!patient || !patient.phone || !appointment.appointment_date) return;
 
-        const timeStr = new Date(appointment.appointment_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const timeOpts: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' };
+        const timeStr = new Date(appointment.appointment_date).toLocaleTimeString('en-US', timeOpts);
         
         console.log(`[Cron] Sending ${isFollowUp ? '3h follow-up' : '2h'} reminder to ${patient.phone}`);
         await sendWhatsAppMessage(

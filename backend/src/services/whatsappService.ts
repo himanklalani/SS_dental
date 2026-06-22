@@ -53,7 +53,9 @@ export const sendWhatsAppMessage = async (phone: string, name: string, service_t
           readableTemplateText = `Hi ${name}, your appointment for ${templateParams?.[3] || service_type} is scheduled on ${templateParams?.[1]} at ${templateParams?.[2]} at Dr. Saachi Shingrani's Dental Care. See you soon!\n\n(Please reply "Yes" to confirm)`;
       } else if (templateName === 'appointment_reminder') {
           readableTemplateText = `Hi ${name}, this is a friendly reminder that you have an appointment for ${templateParams?.[1] || service_type} today at ${templateParams?.[2]}. We look forward to seeing you!\n\n(Please reply "Yes" to confirm)`;
-      } else if (templateName === 'thank_you_simple' || templateName === 'review_request') {
+      } else if (templateName === 'thank_you_simple') {
+          readableTemplateText = `Hi ${name}, thank you for visiting us for your ${service_type}. We hope you had a great experience!`;
+      } else if (templateName === 'review_request') {
           const reviewUrl = appointmentId ? `https://review-booking-system.onrender.com/api/r/${appointmentId}` : 'https://g.page/r/Cb40ziDcqQoHEAE/review';
           readableTemplateText = `Hi ${name}, thank you for visiting us for your ${service_type}. We hope you had a great experience! Could you please take a moment to leave us a review?\n\nLeave a review here: ${reviewUrl}`;
       } else if (templateName === 'review_follow_up') {

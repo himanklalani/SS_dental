@@ -100,6 +100,10 @@ export const createAppointment = async (req: Request, res: Response) => {
             appointmentData.doctor_id = doctor._id;
         }
 
+        if (!appointmentData.patient_id) {
+            return res.status(400).json({ error: 'Patient is required. Please select a valid patient.' });
+        }
+
         if (appointmentData.appointment_date && ['Booked', 'Confirmed', 'Completed'].includes(appointmentData.status)) {
             const isDoubleBooked = await checkDoubleBooking(appointmentData.business_id, new Date(appointmentData.appointment_date));
             if (isDoubleBooked) {

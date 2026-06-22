@@ -124,6 +124,12 @@ export default function AppointmentsPage() {
 
     const handleCreateOrUpdate = async (e: React.FormEvent) => {
         e.preventDefault();
+        
+        if (!newAppointment.patient_id) {
+            alert("Please select a patient from the dropdown. If they are a new patient, add them in the Patients tab first.");
+            return;
+        }
+
         try {
             const dateTime = new Date(`${newAppointment.appointment_date}T${newAppointment.appointment_time}`);
             const payload = { ...newAppointment, appointment_date: dateTime };

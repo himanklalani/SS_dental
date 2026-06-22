@@ -235,7 +235,7 @@ export const updateAppointment = async (req: Request, res: Response) => {
                 const messageType = req.body.message_type || 'none';
 
                 if (messageType === 'thank_you') {
-                    // Send basic thank you template (or text fallback)
+                    // Send basic thank you template
                     await sendWhatsAppMessage(
                         patient.phone, 
                         patient.name, 
@@ -243,9 +243,15 @@ export const updateAppointment = async (req: Request, res: Response) => {
                         business._id, 
                         undefined, 
                         'thank_you_simple',
-                        undefined,
+                        updatedAppointment._id.toString(),
                         [patient.name, updatedAppointment.service_type]
                     );
+                    
+                    // Set these so the dashboard counts the link as "sent"
+                    // but we do NOT schedule the follow-up reminder!
+                    updatedAppointment.review_requested = true;
+                    updatedAppointment.review_requested_at = new Date();
+                    await updatedAppointment.save();
                 } else if (messageType === 'review') {
                     try {
                         // Send Review Request Template with Button

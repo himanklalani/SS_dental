@@ -210,14 +210,9 @@ export default function InboxPage() {
 
     // Check if a given chat's window is open (for forward filtering)
     const isChatWindowOpen = (chat: any) => {
-        const latest = chat.latestMessage;
-        if (!latest) return false;
-        if (latest.direction !== 'inbound') {
-            // No inbound message tracked - can't be sure, exclude to be safe
-            return false;
-        }
-        const lastTime = new Date(latest.createdAt).getTime();
-        return (Date.now() - lastTime) < 24 * 60 * 60 * 1000;
+        if (!chat.last_message_received_at) return false;
+        const hours = (Date.now() - new Date(chat.last_message_received_at).getTime()) / (1000 * 60 * 60);
+        return hours < 24;
     };
 
     const isWindowOpen = () => {

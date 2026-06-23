@@ -78,12 +78,12 @@ export default function AdminPanel() {
                     <label className="text-xs font-bold text-neutral-500 uppercase tracking-wider">WhatsApp Number</label>
                     <p className="text-[10px] text-neutral-400 mb-1 -mt-1">Edit the box to change country code.</p>
                     <div className="flex gap-2 relative group">
-                      <input type="text" className={`${inputCls} w-20 px-2 text-center pl-3`} value={countryCode} onChange={e => setCountryCode(e.target.value)} />
+                      <input type="text" className={`${inputCls.replace('w-full', 'w-20')} px-2 text-center pl-3 shrink-0`} value={countryCode} onChange={e => setCountryCode(e.target.value)} />
                       <div className="relative flex-1">
                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                           <Phone size={16} className="text-neutral-400 group-focus-within:text-neutral-700 dark:group-focus-within:text-white transition-colors" />
                         </div>
-                        <input type="tel" name="phone" value={formData.phone} onChange={handleChange} required className={`${inputCls} w-full`} placeholder="9876543210" />
+                        <input type="tel" name="phone" value={formData.phone} onChange={handleChange} required className={inputCls} placeholder="9876543210" />
                       </div>
                     </div>
                   </div>

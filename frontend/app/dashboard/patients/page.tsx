@@ -247,7 +247,7 @@ export default function PatientsPage() {
                                         <label className={labelCls}>Phone</label>
                                         <p className="text-[10px] text-neutral-400 mb-1 -mt-1">Edit the box to change country code.</p>
                                         <div className="flex gap-2">
-                                            <input type="text" className={`${inputCls} w-20 px-2 text-center`} value={countryCode} onChange={e => setCountryCode(e.target.value)} />
+                                            <input type="text" className={`${inputCls.replace('w-full', 'w-20')} px-2 text-center shrink-0`} value={countryCode} onChange={e => setCountryCode(e.target.value)} />
                                             <input required type="tel" className={`${inputCls} flex-1`} value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} placeholder="9820880918" />
                                         </div>
                                     </div>

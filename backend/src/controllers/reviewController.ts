@@ -186,18 +186,7 @@ export const sendDirectMessage = async (req: Request, res: Response) => {
             [name]
         );
 
-        const customer = await Customer.findOne({ phone, business_id: business._id });
-        if (customer) {
-             await Message.create({
-                 customer_id: customer._id,
-                 business_id: business._id,
-                 direction: 'outbound',
-                 message_type: 'template',
-                 status: 'sent',
-                 content: 'generic_clinic_msg',
-                 whatsapp_message_id: response?.sid
-             });
-        }
+
 
         res.status(200).json({ message: 'Message dispatched successfully', sid: response.sid });
     } catch (error: any) {

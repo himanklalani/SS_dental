@@ -1,4 +1,4 @@
-"use client";
+he"use client";
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, Send, Image as ImageIcon, FileText, Check, CheckCheck, Clock, Download, User, Trash2, Video, ArrowLeft, Paperclip, X, RefreshCw, Reply, UserMinus } from 'lucide-react';

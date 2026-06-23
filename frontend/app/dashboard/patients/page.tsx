@@ -53,8 +53,15 @@ export default function PatientsPage() {
         
         let pPhone = patient.phone || '';
         let cCode = '+91';
-        if (pPhone.startsWith('+')) {
-            const match = pPhone.match(/^(\+\d{1,4})(\d+)$/);
+        if (pPhone.startsWith('+91')) {
+            cCode = '+91';
+            pPhone = pPhone.slice(3);
+        } else if (pPhone.startsWith('+1')) {
+            cCode = '+1';
+            pPhone = pPhone.slice(2);
+        } else if (pPhone.startsWith('+')) {
+            // generic fallback
+            const match = pPhone.match(/^(\+\d{2,3})(\d+)$/);
             if (match) {
                 cCode = match[1];
                 pPhone = match[2];
@@ -248,7 +255,7 @@ export default function PatientsPage() {
                                         <p className="text-[10px] text-neutral-400 mb-1 -mt-1">Edit the box to change country code.</p>
                                         <div className="flex gap-2">
                                             <input type="text" className={`${inputCls.replace('w-full', 'w-20')} px-2 text-center shrink-0`} value={countryCode} onChange={e => setCountryCode(e.target.value)} />
-                                            <input required type="tel" className={`${inputCls} flex-1`} value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} placeholder="9820880918" />
+                                            <input required type="tel" className={`${inputCls} flex-1`} value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} placeholder="Enter phone number" />
                                         </div>
                                     </div>
                                     <div>

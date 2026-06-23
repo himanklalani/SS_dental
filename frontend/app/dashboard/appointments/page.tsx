@@ -58,6 +58,7 @@ export default function AppointmentsPage() {
     const [totalPages, setTotalPages] = useState(1);
     const [businessId] = useState(process.env.NEXT_PUBLIC_BUSINESS_ID || '69edf7401e9164e3fd73e073');
     const [refreshing, setRefreshing] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
 
     const [showCompletionModal, setShowCompletionModal] = useState(false);
     const [selectedAppointment, setSelectedAppointment] = useState<any>(null);
@@ -130,13 +131,21 @@ export default function AppointmentsPage() {
             return;
         }
 
+        if (submitting) return;
+        setSubmitting(true);
+
         try {
             const dateTime = new Date(`${newAppointment.appointment_date}T${newAppointment.appointment_time}`);
             const payload = { ...newAppointment, appointment_date: dateTime };
             if (editingAppointment) { await updateAppointment(editingAppointment._id, payload); }
             else { await createAppointment(payload); }
             setShowAddModal(false); setEditingAppointment(null); fetchData();
-        } catch (error) { console.error(error); alert(`Failed to ${editingAppointment ? 'update' : 'create'} appointment`); }
+        } catch (error) { 
+            console.error(error); 
+            alert(`Failed to ${editingAppointment ? 'update' : 'create'} appointment`); 
+        } finally {
+            setSubmitting(false);
+        }
     };
 
     const handleDelete = async (id: string) => {
@@ -430,8 +439,11 @@ export default function AppointmentsPage() {
                                     <textarea className={inputCls} rows={2} value={newAppointment.notes} onChange={e => setNewAppointment({...newAppointment, notes: e.target.value})} />
                                 </div>
                                 <div className="flex gap-3 pt-2">
-                                    <button type="button" onClick={() => { setShowAddModal(false); setEditingAppointment(null); }} className="flex-1 py-3 bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-white rounded font-medium hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors">Cancel</button>
-                                    <button type="submit" className="flex-1 py-3 bg-neutral-900 dark:bg-white text-white dark:text-black rounded font-bold hover:bg-neutral-700 dark:hover:bg-neutral-200 transition-colors">{editingAppointment ? 'Update' : 'Book Appointment'}</button>
+                                    <button type="button" disabled={submitting} onClick={() => { setShowAddModal(false); setEditingAppointment(null); }} className="flex-1 py-3 bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-white rounded font-medium hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors disabled:opacity-50">Cancel</button>
+                                    <button type="submit" disabled={submitting} className="flex-1 py-3 flex justify-center items-center gap-2 bg-neutral-900 dark:bg-white text-white dark:text-black rounded font-bold hover:bg-neutral-700 dark:hover:bg-neutral-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                                        {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
+                                        {submitting ? 'Saving...' : (editingAppointment ? 'Update' : 'Book Appointment')}
+                                    </button>
                                 </div>
                             </form>
                         </div>

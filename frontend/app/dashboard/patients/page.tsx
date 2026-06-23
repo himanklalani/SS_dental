@@ -19,6 +19,7 @@ export default function PatientsPage() {
     const [searchTerm, setSearchTerm] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const [businessId] = useState(process.env.NEXT_PUBLIC_BUSINESS_ID || '69edf7401e9164e3fd73e073');
+    const [submitting, setSubmitting] = useState(false);
 
     const [countryCode, setCountryCode] = useState('+91');
     const [formData, setFormData] = useState({
@@ -82,6 +83,8 @@ export default function PatientsPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (submitting) return;
+        setSubmitting(true);
         try {
             const historyArray = formData.medical_history.split(',').map(s => s.trim()).filter(Boolean);
             const payload = { ...formData, medical_history: historyArray, phone: countryCode + formData.phone };
@@ -92,6 +95,8 @@ export default function PatientsPage() {
         } catch (error: any) {
             console.error(error);
             alert(error.response?.data?.error || error.response?.data?.message || `Failed to ${editingId ? 'update' : 'create'} patient`);
+        } finally {
+            setSubmitting(false);
         }
     };
 
@@ -283,8 +288,11 @@ export default function PatientsPage() {
                                     <textarea className={inputCls} rows={3} value={formData.medical_history} onChange={e => setFormData({...formData, medical_history: e.target.value})} />
                                 </div>
                                 <div className="flex gap-3 pt-2">
-                                    <button type="button" onClick={() => setShowAddModal(false)} className="flex-1 py-3 bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-white rounded font-medium hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors">Cancel</button>
-                                    <button type="submit" className="flex-1 py-3 bg-neutral-900 dark:bg-white text-white dark:text-black rounded font-bold hover:bg-neutral-700 dark:hover:bg-neutral-200 transition-colors">{editingId ? 'Update Patient' : 'Create Patient'}</button>
+                                    <button type="button" disabled={submitting} onClick={() => setShowAddModal(false)} className="flex-1 py-3 bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-white rounded font-medium hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors disabled:opacity-50">Cancel</button>
+                                    <button type="submit" disabled={submitting} className="flex-1 py-3 flex justify-center items-center gap-2 bg-neutral-900 dark:bg-white text-white dark:text-black rounded font-bold hover:bg-neutral-700 dark:hover:bg-neutral-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                                        {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
+                                        {submitting ? 'Saving...' : (editingId ? 'Update Patient' : 'Create Patient')}
+                                    </button>
                                 </div>
                             </form>
                         </div>

@@ -176,7 +176,7 @@ export default function AppointmentsPage() {
         } catch { setCanSendReview(true); }
     };
 
-    const handleCompleteFlow = async (messageType: 'none' | 'thank_you' | 'review' = 'none') => {
+    const handleCompleteFlow = async (messageType: 'none' | 'thank_you' | 'review' | 'review_no_followup' = 'none') => {
         try {
             await updateAppointment(selectedAppointment._id, { status: 'Completed', message_type: messageType });
             if (isFollowUpNeeded && followUpData.date && followUpData.time) {

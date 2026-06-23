@@ -61,6 +61,9 @@ export const sendWhatsAppMessage = async (phone: string, name: string, service_t
       } else if (templateName === 'review_follow_up') {
           const reviewUrl = appointmentId ? `https://review-booking-system.onrender.com/api/r/${appointmentId}` : 'https://g.page/r/Cb40ziDcqQoHEAE/review';
           readableTemplateText = `Hi ${name}, this is a gentle follow-up from Dr. Saachi Shingrani's Dental Care regarding your recent ${service_type}. We would truly appreciate it if you could share your feedback with us: ${reviewUrl}`;
+      } else if (templateName === 'review_request_no_followup') {
+          const reviewUrl = appointmentId ? `https://review-booking-system.onrender.com/api/r/${appointmentId}` : 'https://g.page/r/Cb40ziDcqQoHEAE/review';
+          readableTemplateText = `Greetings ${name} from Dr Saachi Shingrani's Dental Care, it would be really helpful if you shared your review about us:\n${reviewUrl}\n\nThank You!`;
       } else if (templateName === 'generic_clinic_msg') {
           readableTemplateText = `Greetings from Dr. Saachi Shingrani's Dental Care, ${name}, we sincerely hope you are doing well. Please feel free to reach out to us or book your next appointment at your convenience or send a text here. 😊\n\nVisit our website: https://www.srsdentalcare.in\nCall us: +919004402797`;
       } else if (templateName === 'appointment_cancelled') {

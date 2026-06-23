@@ -423,18 +423,38 @@ export default function InboxPage() {
                         <div className="flex-1 overflow-y-auto p-3 md:p-6 space-y-3 md:space-y-4">
                             {messages.map((msg, idx) => {
                                 const isOutbound = msg.direction === 'outbound';
+                                const messageDate = new Date(msg.createdAt).toLocaleDateString();
+                                const prevMessageDate = idx > 0 ? new Date(messages[idx - 1].createdAt).toLocaleDateString() : null;
+                                const showDateSeparator = messageDate !== prevMessageDate;
+                                
+                                const displayDate = (() => {
+                                    const today = new Date().toLocaleDateString();
+                                    const yesterday = new Date(Date.now() - 86400000).toLocaleDateString();
+                                    if (messageDate === today) return 'Today';
+                                    if (messageDate === yesterday) return 'Yesterday';
+                                    return new Date(msg.createdAt).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+                                })();
+
                                 return (
-                                    <div key={msg._id || idx} className={`flex items-center gap-2 group animate-in fade-in slide-in-from-bottom-2 duration-300 ${isOutbound ? 'justify-end' : 'justify-start'}`}>
-                                        {!isOutbound && (
-                                            <button 
-                                                onClick={() => setReplyingToMessage(msg)}
-                                                title="Reply to message"
-                                                className="opacity-100 md:opacity-0 md:group-hover:opacity-100 p-2 text-gray-400 hover:text-blue-500 hover:bg-gray-200 rounded-full transition-all focus:opacity-100"
-                                            >
-                                                <Reply className="w-4 h-4" />
-                                            </button>
+                                    <React.Fragment key={msg._id || idx}>
+                                        {showDateSeparator && (
+                                            <div className="flex justify-center my-4">
+                                                <span className="bg-white/80 backdrop-blur-sm border border-gray-200 text-gray-500 text-[10px] uppercase tracking-wider font-bold px-3 py-1 rounded-lg shadow-sm">
+                                                    {displayDate}
+                                                </span>
+                                            </div>
                                         )}
-                                        <div className={`max-w-[85%] md:max-w-[70%] rounded-xl px-3 md:px-4 py-2 shadow-sm relative ${isOutbound ? 'bg-[#d9fdd3] text-gray-800 rounded-tr-none' : 'bg-white text-gray-800 rounded-tl-none'}`}>
+                                        <div className={`flex items-center gap-2 group animate-in fade-in slide-in-from-bottom-2 duration-300 ${isOutbound ? 'justify-end' : 'justify-start'}`}>
+                                            {!isOutbound && (
+                                                <button 
+                                                    onClick={() => setReplyingToMessage(msg)}
+                                                    title="Reply to message"
+                                                    className="opacity-100 md:opacity-0 md:group-hover:opacity-100 p-2 text-gray-400 hover:text-blue-500 hover:bg-gray-200 rounded-full transition-all focus:opacity-100"
+                                                >
+                                                    <Reply className="w-4 h-4" />
+                                                </button>
+                                            )}
+                                            <div className={`max-w-[85%] md:max-w-[70%] rounded-xl px-3 md:px-4 py-2 shadow-sm relative ${isOutbound ? 'bg-[#d9fdd3] text-gray-800 rounded-tr-none' : 'bg-white text-gray-800 rounded-tl-none'}`}>
                                             
                                             {/* Context/Replied-to Box */}
                                             {msg.context_message_id && (
@@ -533,7 +553,8 @@ export default function InboxPage() {
                                                 <Reply className="w-4 h-4" />
                                             </button>
                                         )}
-                                    </div>
+                                        </div>
+                                    </React.Fragment>
                                 );
                             })}
                             <div ref={messagesEndRef} />

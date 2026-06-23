@@ -20,6 +20,7 @@ export default function PatientsPage() {
     const [currentPage, setCurrentPage] = useState(1);
     const [businessId] = useState(process.env.NEXT_PUBLIC_BUSINESS_ID || '69edf7401e9164e3fd73e073');
 
+    const [countryCode, setCountryCode] = useState('+91');
     const [formData, setFormData] = useState({
         name: '', phone: '', email: '', date_of_birth: '', gender: '',
         medical_history: '', business_id: businessId
@@ -42,14 +43,28 @@ export default function PatientsPage() {
 
     const handleOpenAdd = () => {
         setEditingId(null);
+        setCountryCode('+91');
         setFormData({ name: '', phone: '', email: '', date_of_birth: '', gender: '', medical_history: '', business_id: businessId });
         setShowAddModal(true);
     };
 
     const handleOpenEdit = (patient: any) => {
         setEditingId(patient._id);
+        
+        let pPhone = patient.phone || '';
+        let cCode = '+91';
+        if (pPhone.startsWith('+')) {
+            const match = pPhone.match(/^(\+\d{1,4})(\d+)$/);
+            if (match) {
+                cCode = match[1];
+                pPhone = match[2];
+            }
+        }
+        
+        setCountryCode(cCode);
+
         setFormData({
-            name: patient.name || '', phone: patient.phone || '', email: patient.email || '',
+            name: patient.name || '', phone: pPhone, email: patient.email || '',
             date_of_birth: patient.date_of_birth ? new Date(patient.date_of_birth).toISOString().split('T')[0] : '',
             gender: patient.gender || '',
             medical_history: Array.isArray(patient.medical_history) ? patient.medical_history.join(', ') : '',
@@ -62,14 +77,14 @@ export default function PatientsPage() {
         e.preventDefault();
         try {
             const historyArray = formData.medical_history.split(',').map(s => s.trim()).filter(Boolean);
-            const payload = { ...formData, medical_history: historyArray };
+            const payload = { ...formData, medical_history: historyArray, phone: countryCode + formData.phone };
             if (editingId) { await updatePatient(editingId, payload); }
             else { await createPatient(payload); }
             setShowAddModal(false);
             fetchPatients();
-        } catch (error) {
+        } catch (error: any) {
             console.error(error);
-            alert(`Failed to ${editingId ? 'update' : 'create'} patient`);
+            alert(error.response?.data?.error || error.response?.data?.message || `Failed to ${editingId ? 'update' : 'create'} patient`);
         }
     };
 
@@ -230,7 +245,11 @@ export default function PatientsPage() {
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <label className={labelCls}>Phone</label>
-                                        <input required type="tel" className={inputCls} value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} />
+                                        <p className="text-[10px] text-neutral-400 mb-1 -mt-1">Edit the box to change country code.</p>
+                                        <div className="flex gap-2">
+                                            <input type="text" className={`${inputCls} w-20 px-2 text-center`} value={countryCode} onChange={e => setCountryCode(e.target.value)} />
+                                            <input required type="tel" className={`${inputCls} flex-1`} value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} placeholder="9820880918" />
+                                        </div>
                                     </div>
                                     <div>
                                         <label className={labelCls}>Email</label>

@@ -10,6 +10,7 @@ export default function AdminPanel() {
   const [formData, setFormData] = useState({
     name: '', phone: '', business_id: '69edf7401e9164e3fd73e073'
   });
+  const [countryCode, setCountryCode] = useState('+91');
   const [status, setStatus] = useState<'idle' | 'sending' | 'success' | 'error'>('idle');
   const [statusMessage, setStatusMessage] = useState('');
 
@@ -21,7 +22,7 @@ export default function AdminPanel() {
     e.preventDefault();
     setStatus('sending'); setStatusMessage('');
     try {
-      await sendDirectMessage(formData);
+      await sendDirectMessage({ ...formData, phone: countryCode + formData.phone });
       setStatus('success');
       setStatusMessage('Generic message dispatched via WhatsApp.');
       setFormData({ ...formData, name: '', phone: '' });
@@ -75,11 +76,15 @@ export default function AdminPanel() {
 
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-neutral-500 uppercase tracking-wider">WhatsApp Number</label>
-                    <div className="relative group">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <Phone size={16} className="text-neutral-400 group-focus-within:text-neutral-700 dark:group-focus-within:text-white transition-colors" />
+                    <p className="text-[10px] text-neutral-400 mb-1 -mt-1">Edit the box to change country code.</p>
+                    <div className="flex gap-2 relative group">
+                      <input type="text" className={`${inputCls} w-20 px-2 text-center pl-3`} value={countryCode} onChange={e => setCountryCode(e.target.value)} />
+                      <div className="relative flex-1">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <Phone size={16} className="text-neutral-400 group-focus-within:text-neutral-700 dark:group-focus-within:text-white transition-colors" />
+                        </div>
+                        <input type="tel" name="phone" value={formData.phone} onChange={handleChange} required className={`${inputCls} w-full`} placeholder="9876543210" />
                       </div>
-                      <input type="tel" name="phone" value={formData.phone} onChange={handleChange} required className={inputCls} placeholder="+91 98765 43210" />
                     </div>
                   </div>
                 </div>

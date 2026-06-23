@@ -179,8 +179,8 @@ export default function InboxPage() {
     });
 
     const isWindowOpen = () => {
-        if (!selectedChat?.last_interaction) return false;
-        const hours = (Date.now() - new Date(selectedChat.last_interaction).getTime()) / (1000 * 60 * 60);
+        if (!selectedChat?.last_message_received_at) return false;
+        const hours = (Date.now() - new Date(selectedChat.last_message_received_at).getTime()) / (1000 * 60 * 60);
         return hours < 24;
     };
 

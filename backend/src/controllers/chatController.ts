@@ -134,7 +134,7 @@ export const sendManualReply = async (req: Request, res: Response) => {
         const dbPhone = customer.phone.startsWith('+') ? customer.phone : '+' + customer.phone.replace(/[^0-9]/g, '');
         const patient = await Patient.findOne({ phone: dbPhone });
         
-        const lastMessageTime = patient?.last_message_received_at || customer.last_interaction;
+        const lastMessageTime = patient?.last_message_received_at || customer.last_message_received_at;
         if (lastMessageTime) {
             const hoursSinceLastMessage = (Date.now() - new Date(lastMessageTime).getTime()) / (1000 * 60 * 60);
             if (hoursSinceLastMessage < 24) {

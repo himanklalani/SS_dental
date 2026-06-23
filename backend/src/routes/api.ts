@@ -37,7 +37,7 @@ router.put('/business/:id', updateBusiness);
 router.get('/r/:appointmentId', trackReviewClick); // <-- Added the missing tracking route
 
 // Chat & Inbox
-import { getChats, getChatHistory, getMediaUrl, sendManualReply, sendMediaReply, updateCustomerName, deleteChatHistory } from '../controllers/chatController';
+import { getChats, getChatHistory, getMediaUrl, sendManualReply, sendMediaReply, updateCustomerName, deleteChatHistory, deleteContact } from '../controllers/chatController';
 import multer from 'multer';
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -47,6 +47,7 @@ router.post('/chats/reply', sendManualReply);            // ← MUST be before /
 router.post('/chats/media-reply', upload.single('file'), sendMediaReply); // ← MUST be before /:customerId
 router.get('/chats/:customerId', getChatHistory);
 router.delete('/chats/:customerId', deleteChatHistory);
+router.delete('/chats/:customerId/contact', deleteContact);
 router.put('/chats/:customerId/name', updateCustomerName);
 
 // Broadcasts

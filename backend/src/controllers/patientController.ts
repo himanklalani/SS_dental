@@ -42,8 +42,19 @@ export const createPatient = async (req: Request, res: Response) => {
 export const updatePatient = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
+        const oldPatient = await Patient.findById(id);
         const patientData = normalizeData(req.body);
         const patient = await Patient.findByIdAndUpdate(id, patientData, { new: true });
+        
+        // Sync with WhatsApp Inbox (Customer)
+        if (oldPatient && patient) {
+            const Customer = require('../models/Customer').default;
+            await Customer.updateMany(
+                { phone: oldPatient.phone, business_id: patient.business_id },
+                { $set: { phone: patient.phone, name: patient.name } }
+            );
+        }
+        
         res.status(200).json(patient);
     } catch (error) {
         res.status(500).json({ error: 'Failed to update patient' });

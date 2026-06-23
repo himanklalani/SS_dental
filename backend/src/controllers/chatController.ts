@@ -99,6 +99,19 @@ export const deleteChatHistory = async (req: Request, res: Response) => {
 };
 
 // @desc    Update customer name
+// @route   DELETE /api/chats/:customerId/contact
+// @access  Private
+export const deleteContact = async (req: Request, res: Response) => {
+    try {
+        const { customerId } = req.params;
+        await Message.deleteMany({ customer_id: customerId });
+        await Customer.findByIdAndDelete(customerId);
+        res.status(200).json({ message: 'Contact and chat history deleted' });
+    } catch (error: any) {
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+};
+
 // @route   PUT /api/chats/:customerId/name
 // @access  Private
 export const updateCustomerName = async (req: Request, res: Response) => {

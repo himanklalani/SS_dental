@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Send, Image as ImageIcon, FileText, Check, CheckCheck, Clock, Download, User, Trash2, Video, ArrowLeft, Paperclip, X, RefreshCw, Reply } from 'lucide-react';
+import { Search, Send, Image as ImageIcon, FileText, Check, CheckCheck, Clock, Download, User, Trash2, Video, ArrowLeft, Paperclip, X, RefreshCw, Reply, UserMinus } from 'lucide-react';
 import api from '@/app/lib/api';
 
 export default function InboxPage() {
@@ -209,8 +209,22 @@ export default function InboxPage() {
             setMessages([]);
             setSelectedChat(null);
             fetchChats(); // Refresh the sidebar
-        } catch (error) {
-            alert("Failed to delete chat history");
+        } catch (error: any) {
+            alert(error.response?.data?.message || error.response?.data?.error || "Failed to delete chat history");
+        }
+    };
+
+    const handleDeleteContact = async () => {
+        if (!selectedChat) return;
+        if (!confirm(`Are you sure you want to delete this contact and all their messages from the WhatsApp inbox? This cannot be undone.`)) return;
+
+        try {
+            await api.delete(`/chats/${selectedChat._id}/contact`);
+            setMessages([]);
+            setSelectedChat(null);
+            fetchChats(); // Refresh the sidebar
+        } catch (error: any) {
+            alert(error.response?.data?.message || error.response?.data?.error || "Failed to delete contact");
         }
     };
 
@@ -389,10 +403,18 @@ export default function InboxPage() {
                                 
                                 <button 
                                     onClick={handleDeleteChat}
-                                    title="Delete Chat"
+                                    title="Clear Chat History"
                                     className="text-gray-500 hover:text-red-600 transition p-1"
                                 >
                                     <Trash2 className="w-4 h-4 md:w-5 md:h-5" />
+                                </button>
+
+                                <button 
+                                    onClick={handleDeleteContact}
+                                    title="Delete Contact completely from Inbox"
+                                    className="text-gray-500 hover:text-red-600 transition p-1 ml-1"
+                                >
+                                    <UserMinus className="w-4 h-4 md:w-5 md:h-5" />
                                 </button>
                             </div>
                         </div>

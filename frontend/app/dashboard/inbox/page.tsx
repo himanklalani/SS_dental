@@ -101,19 +101,42 @@ export default function InboxPage() {
         e.preventDefault();
         if ((!newMessage.trim() && !selectedFile) || !selectedChat) return;
 
-        setSending(true);
+        // Create Optimistic Message
+        const tempId = `temp-${Date.now()}`;
+        const messageToSend = newMessage.trim();
+        const fileToSend = selectedFile;
+        const replyMessageId = replyingToMessage?.whatsapp_message_id;
+
+        const optimisticMessage = {
+            _id: tempId,
+            content: messageToSend || (fileToSend ? `[Sending ${fileToSend.name}...]` : ''),
+            direction: 'outbound',
+            status: 'optimistic_sending',
+            createdAt: new Date().toISOString(),
+            message_type: fileToSend ? (fileToSend.type.startsWith('image') ? 'image' : fileToSend.type.startsWith('video') ? 'video' : 'document') : 'text',
+            context_message_id: replyMessageId,
+            media_id: fileToSend ? 'temp-media' : undefined
+        };
+
+        // Instantly update UI and clear inputs
+        setMessages(prev => [...prev, optimisticMessage]);
+        setNewMessage("");
+        setSelectedFile(null);
+        setReplyingToMessage(null);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+
         try {
             let res;
-            if (selectedFile) {
+            if (fileToSend) {
                 const formData = new FormData();
                 formData.append('business_id', businessId);
                 formData.append('customer_id', selectedChat._id);
-                formData.append('file', selectedFile);
-                if (newMessage.trim()) {
-                    formData.append('caption', newMessage.trim());
+                formData.append('file', fileToSend);
+                if (messageToSend) {
+                    formData.append('caption', messageToSend);
                 }
-                if (replyingToMessage?.whatsapp_message_id) {
-                    formData.append('reply_to_message_id', replyingToMessage.whatsapp_message_id);
+                if (replyMessageId) {
+                    formData.append('reply_to_message_id', replyMessageId);
                 }
 
                 res = await api.post('/chats/media-reply', formData, {
@@ -123,16 +146,13 @@ export default function InboxPage() {
                 res = await api.post('/chats/reply', {
                     business_id: businessId,
                     customer_id: selectedChat._id,
-                    text: newMessage.trim(),
-                    reply_to_message_id: replyingToMessage?.whatsapp_message_id
+                    text: messageToSend,
+                    reply_to_message_id: replyMessageId
                 });
             }
             
-            setMessages(prev => [...prev, res.data.data]);
-            setNewMessage("");
-            setSelectedFile(null);
-            setReplyingToMessage(null);
-            if (fileInputRef.current) fileInputRef.current.value = "";
+            // Replace optimistic message with actual DB message
+            setMessages(prev => prev.map(m => m._id === tempId ? res.data.data : m));
             
             // Update the last message in the chat list
             setChats(prevChats => prevChats.map(c => {
@@ -143,9 +163,9 @@ export default function InboxPage() {
             }));
 
         } catch (error: any) {
-            alert(error.response?.data?.message || "Failed to send message. 24-hour window may be closed.");
-        } finally {
-            setSending(false);
+            console.error(error);
+            // Update optimistic message to show failure
+            setMessages(prev => prev.map(m => m._id === tempId ? { ...m, status: 'optimistic_failed' } : m));
         }
     };
 
@@ -160,7 +180,8 @@ export default function InboxPage() {
         if (msg.status === 'read') return <CheckCheck className="w-3 h-3 text-blue-500 inline-block ml-1" />;
         if (msg.status === 'delivered') return <CheckCheck className="w-3 h-3 text-gray-400 inline-block ml-1" />;
         if (msg.status === 'sent') return <Check className="w-3 h-3 text-gray-400 inline-block ml-1" />;
-        if (msg.status === 'failed') return <span className="text-red-500 text-xs ml-1">Failed</span>;
+        if (msg.status === 'failed' || msg.status === 'optimistic_failed') return <span className="text-red-500 text-[10px] ml-1 font-bold">Failed</span>;
+        if (msg.status === 'optimistic_sending') return <Clock className="w-3 h-3 text-gray-400 inline-block ml-1 animate-pulse" />;
         return <Clock className="w-3 h-3 text-gray-400 inline-block ml-1" />; // queued
     };
 
@@ -618,11 +639,11 @@ export default function InboxPage() {
                                     ref={fileInputRef} 
                                     onChange={handleFileChange}
                                     accept="image/*,video/*,.pdf,.csv,.xlsx,.xls"
-                                    disabled={selectedChat?.opt_out || !isWindowOpen() || sending}
+                                    disabled={selectedChat?.opt_out || !isWindowOpen()}
                                 />
                                 <button 
                                     type="button"
-                                    disabled={selectedChat?.opt_out || !isWindowOpen() || sending}
+                                    disabled={selectedChat?.opt_out || !isWindowOpen()}
                                     onClick={() => fileInputRef.current?.click()}
                                     className="p-3 text-gray-500 hover:bg-gray-200 rounded-full transition disabled:opacity-50 flex items-center justify-center"
                                 >
@@ -634,18 +655,14 @@ export default function InboxPage() {
                                     className="flex-1 bg-white text-gray-900 border-none rounded-full px-4 md:px-5 py-2.5 md:py-3 outline-none focus:ring-2 focus:ring-blue-500 shadow-sm disabled:bg-gray-100 disabled:cursor-not-allowed text-sm md:text-base transition-all duration-300"
                                     value={newMessage}
                                     onChange={(e) => setNewMessage(e.target.value)}
-                                    disabled={selectedChat?.opt_out || !isWindowOpen() || sending}
+                                    disabled={selectedChat?.opt_out || !isWindowOpen()}
                                 />
                                 <button 
                                     type="submit"
-                                    disabled={selectedChat?.opt_out || (!newMessage.trim() && !selectedFile) || !isWindowOpen() || sending}
+                                    disabled={selectedChat?.opt_out || (!newMessage.trim() && !selectedFile) || !isWindowOpen()}
                                     className="w-10 h-10 md:w-12 md:h-12 bg-blue-600 hover:bg-blue-700 text-white rounded-full flex items-center justify-center transition disabled:opacity-50 disabled:cursor-not-allowed shadow-sm shrink-0"
                                 >
-                                    {sending ? (
-                                        <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                                    ) : (
-                                        <Send className="w-5 h-5 ml-1" />
-                                    )}
+                                    <Send className="w-5 h-5 ml-1" />
                                 </button>
                             </form>
                         </div>

@@ -269,6 +269,27 @@ export const updateAppointment = async (req: Request, res: Response) => {
                     } catch (queueError) {
                         console.error(`[CRM] Failed to send review request:`, queueError);
                     }
+                } else if (messageType === 'review_no_followup') {
+                    try {
+                        // Send Review Request Template without scheduling follow up
+                        await sendWhatsAppMessage(
+                            patient.phone, 
+                            patient.name, 
+                            updatedAppointment.service_type, 
+                            business._id, 
+                            undefined, 
+                            'review_request_no_followup',
+                            updatedAppointment._id.toString(),
+                            [patient.name]
+                        );
+
+                        // DO NOT schedule the follow up tracker
+                        updatedAppointment.review_requested = true;
+                        updatedAppointment.review_requested_at = new Date();
+                        await updatedAppointment.save();
+                    } catch (queueError) {
+                        console.error(`[CRM] Failed to send review request (no followup):`, queueError);
+                    }
                 }
             }
         }

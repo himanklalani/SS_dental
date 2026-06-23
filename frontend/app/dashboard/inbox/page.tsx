@@ -476,11 +476,14 @@ export default function InboxPage() {
                                                         />
                                                     )}
                                                     {msg.message_type === 'audio' && (
-                                                        <audio 
-                                                            src={`/api/chats/media/${msg.media_id}`} 
-                                                            controls 
-                                                            className="w-full mb-1"
-                                                        />
+                                                        <div className="w-full mb-1 text-center">
+                                                            <audio 
+                                                                src={`/api/chats/media/${msg.media_id}`} 
+                                                                controls 
+                                                                className="w-full mb-1"
+                                                            />
+                                                            <p className="text-[10px] text-gray-500 italic mt-1 leading-tight">iPhone users: download to listen through your device</p>
+                                                        </div>
                                                     )}
                                                     {msg.message_type === 'document' && (
                                                         <div className="flex items-center gap-3 bg-black/5 p-3 rounded-lg mb-1">

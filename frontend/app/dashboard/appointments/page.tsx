@@ -16,6 +16,11 @@ const SERVICES = [
     "Cosmetic Dentistry",
     "Orthodontic Treatment",
     "Periodontal Therapy",
+    "Crown & Bridges",
+    "Cavity",
+    "Wisdom Tooth",
+    "Normal Tooth",
+    "Minor Surgery",
     "Other / Consult"
 ];
 

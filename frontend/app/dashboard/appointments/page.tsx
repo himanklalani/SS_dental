@@ -17,9 +17,9 @@ const SERVICES = [
     "Orthodontic Treatment",
     "Periodontal Therapy",
     "Crown & Bridges",
-    "Cavity",
-    "Wisdom Tooth",
-    "Normal Tooth",
+    "Cavity Treatment",
+    "Wisdom Tooth Removal",
+    "Normal Tooth Treatment/Removal",
     "Minor Surgery",
     "Other / Consult"
 ];
@@ -432,8 +432,8 @@ export default function AppointmentsPage() {
                                             if (currentSlot !== slot) newTime = '';
                                             setNewAppointment({...newAppointment, preferred_slot: slot, appointment_time: newTime});
                                         }}>
-                                            <option value="Morning">Morning (10:00 - 1:00)</option>
-                                            <option value="Afternoon">Afternoon (2:00 - 5:00)</option>
+                                            <option value="Morning">Morning (10:00 - 1:45)</option>
+                                            <option value="Afternoon">Afternoon (2:00 - 5:15)</option>
                                             <option value="Evening">Evening (5:30 - 7:30)</option>
                                         </select>
                                     </div>

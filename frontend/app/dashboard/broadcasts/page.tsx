@@ -14,7 +14,7 @@ export default function BroadcastsPage() {
     const templates = [
         { id: 'generic_clinic_msg', name: 'Generic Announcement' },
         { id: 'appointment_reminder', name: 'Appointment Reminder' },
-        { id: 'review_request_no_followup', name: 'Review Request' }
+        { id: 'review_request', name: 'Review Request' }
     ];
     const [selectedTemplate, setSelectedTemplate] = useState(templates[0].id);
 

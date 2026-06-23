@@ -631,7 +631,7 @@ export default function InboxPage() {
                                 <input
                                     type="text"
                                     placeholder={selectedChat?.opt_out ? "Patient opted out." : isWindowOpen() ? (selectedFile ? "Add a caption..." : "Type a message...") : "Window closed. Cannot send manual messages."}
-                                    className="flex-1 bg-white border-none rounded-full px-4 md:px-5 py-2.5 md:py-3 outline-none focus:ring-2 focus:ring-blue-500 shadow-sm disabled:bg-gray-100 disabled:cursor-not-allowed text-sm md:text-base transition-all duration-300"
+                                    className="flex-1 bg-white text-gray-900 border-none rounded-full px-4 md:px-5 py-2.5 md:py-3 outline-none focus:ring-2 focus:ring-blue-500 shadow-sm disabled:bg-gray-100 disabled:cursor-not-allowed text-sm md:text-base transition-all duration-300"
                                     value={newMessage}
                                     onChange={(e) => setNewMessage(e.target.value)}
                                     disabled={selectedChat?.opt_out || !isWindowOpen() || sending}

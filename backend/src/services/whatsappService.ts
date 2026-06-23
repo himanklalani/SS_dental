@@ -120,7 +120,7 @@ export const sendWhatsAppMessage = async (phone: string, name: string, service_t
           }
 
           // If review request, append the full URL proxy to the body parameters instead of a button
-          if (templateName === 'review_request' || templateName === 'review_follow_up') {
+          if (templateName === 'review_request' || templateName === 'review_follow_up' || templateName === 'review_request_no_followup') {
               if (!appointmentId) throw new Error("Appointment ID required for review proxy tracking");
               
               const appDomain = 'https://review-booking-system.onrender.com';

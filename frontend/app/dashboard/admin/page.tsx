@@ -157,7 +157,7 @@ export default function AdminPanel() {
                     Greetings <span className="text-emerald-400">{formData.name || '{{1}}'}</span> from <span className="text-blue-400">Dr Saachi Shingrani's Dental Care</span>, it would be really helpful if you shared your review about us:
                   </p>
                   <p className="text-blue-300 underline break-all">
-                    https://l.srsdental.com/r/abc123xyz
+                    https://review-booking-system.onrender.com/api/r/603a21b8f
                   </p>
                   <p>
                      Thank You!

@@ -731,10 +731,10 @@ export default function InboxPage() {
                         </div>
                         <div className="p-4 max-h-64 overflow-y-auto">
                             <p className="text-xs text-gray-500 mb-3 font-semibold uppercase tracking-wider">Forward to (open windows only)</p>
-                            {chats.filter(c => c._id !== selectedChat?._id && isChatWindowOpen(c)).length === 0 ? (
+                            {chats.filter(c => isChatWindowOpen(c)).length === 0 ? (
                                 <p className="text-sm text-gray-500 text-center py-4">No patients with an open 24-hour window right now.</p>
                             ) : (
-                                chats.filter(c => c._id !== selectedChat?._id && isChatWindowOpen(c)).map(c => (
+                                chats.filter(c => isChatWindowOpen(c)).map(c => (
                                     <label key={c._id} className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded-lg cursor-pointer">
                                         <input type="checkbox" className="w-4 h-4 accent-purple-500" checked={forwardTargets.includes(c._id)} onChange={e => setForwardTargets(prev => e.target.checked ? [...prev, c._id] : prev.filter(id => id !== c._id))} />
                                         <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center shrink-0"><User className="w-4 h-4 text-purple-600" /></div>

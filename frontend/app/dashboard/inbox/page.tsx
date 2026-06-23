@@ -558,7 +558,11 @@ export default function InboxPage() {
 
                         {/* Input Area */}
                         <div className="p-2 md:p-4 bg-[#f0f2f5] flex flex-col gap-2 relative">
-                            {!isWindowOpen() && (
+                            {selectedChat?.opt_out ? (
+                                <div className="text-center bg-red-50 text-red-800 text-xs py-2 px-4 rounded-lg border border-red-200 font-medium">
+                                    This patient has explicitly opted out of WhatsApp messages by texting "STOP". Meta blocks all further outbound templates and messages.
+                                </div>
+                            ) : !isWindowOpen() && (
                                 <div className="text-center bg-yellow-50 text-yellow-800 text-xs py-2 px-4 rounded-lg border border-yellow-200">
                                     The 24-hour service window has closed. You cannot send free-form text. Please use the Broadcast tool to send a pre-approved template first.
                                 </div>
@@ -590,11 +594,11 @@ export default function InboxPage() {
                                     ref={fileInputRef} 
                                     onChange={handleFileChange}
                                     accept="image/*,video/*,.pdf,.csv,.xlsx,.xls"
-                                    disabled={!isWindowOpen() || sending}
+                                    disabled={selectedChat?.opt_out || !isWindowOpen() || sending}
                                 />
                                 <button 
                                     type="button"
-                                    disabled={!isWindowOpen() || sending}
+                                    disabled={selectedChat?.opt_out || !isWindowOpen() || sending}
                                     onClick={() => fileInputRef.current?.click()}
                                     className="p-3 text-gray-500 hover:bg-gray-200 rounded-full transition disabled:opacity-50 flex items-center justify-center"
                                 >
@@ -602,15 +606,15 @@ export default function InboxPage() {
                                 </button>
                                 <input
                                     type="text"
-                                    placeholder={isWindowOpen() ? (selectedFile ? "Add a caption..." : "Type a message...") : "Window closed. Cannot send manual messages."}
+                                    placeholder={selectedChat?.opt_out ? "Patient opted out." : isWindowOpen() ? (selectedFile ? "Add a caption..." : "Type a message...") : "Window closed. Cannot send manual messages."}
                                     className="flex-1 bg-white border-none rounded-full px-4 md:px-5 py-2.5 md:py-3 outline-none focus:ring-2 focus:ring-blue-500 shadow-sm disabled:bg-gray-100 disabled:cursor-not-allowed text-sm md:text-base transition-all duration-300"
                                     value={newMessage}
                                     onChange={(e) => setNewMessage(e.target.value)}
-                                    disabled={!isWindowOpen() || sending}
+                                    disabled={selectedChat?.opt_out || !isWindowOpen() || sending}
                                 />
                                 <button 
                                     type="submit"
-                                    disabled={(!newMessage.trim() && !selectedFile) || !isWindowOpen() || sending}
+                                    disabled={selectedChat?.opt_out || (!newMessage.trim() && !selectedFile) || !isWindowOpen() || sending}
                                     className="w-10 h-10 md:w-12 md:h-12 bg-blue-600 hover:bg-blue-700 text-white rounded-full flex items-center justify-center transition disabled:opacity-50 disabled:cursor-not-allowed shadow-sm shrink-0"
                                 >
                                     {sending ? (

@@ -196,6 +196,21 @@ export default function AppointmentsPage() {
         }
     };
 
+    const bookedTimes = React.useMemo(() => {
+        if (!newAppointment.appointment_date) return [];
+        return appointments
+            .filter(a => a.appointment_date && a.status !== 'Cancelled' && a.status !== 'Completed' && a._id !== editingAppointment?._id)
+            .filter(a => {
+                const d = new Date(a.appointment_date);
+                const localDateStr = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}-${d.getDate().toString().padStart(2, '0')}`;
+                return localDateStr === newAppointment.appointment_date;
+            })
+            .map(a => {
+                const d = new Date(a.appointment_date);
+                return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+            });
+    }, [newAppointment.appointment_date, appointments, editingAppointment]);
+
     const filteredAppointments = appointments.filter(a => !filterStatus || a.status === filterStatus);
 
     if (loading) return <div className="flex justify-center p-10"><Loader2 className="animate-spin text-neutral-400" /></div>;
@@ -400,7 +415,10 @@ export default function AppointmentsPage() {
                                             setNewAppointment({...newAppointment, appointment_time: time, preferred_slot: slot});
                                         }}>
                                             <option value="">Select Time</option>
-                                            {getTimesForSlot(newAppointment.preferred_slot).map(t => <option key={t} value={t}>{t}</option>)}
+                                            {getTimesForSlot(newAppointment.preferred_slot).map(t => {
+                                                const isBooked = bookedTimes.includes(t);
+                                                return <option key={t} value={t} disabled={isBooked}>{t} {isBooked ? '(Booked)' : ''}</option>;
+                                            })}
                                         </select>
                                     </div>
                                 </div>

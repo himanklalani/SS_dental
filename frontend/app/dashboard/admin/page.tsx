@@ -8,7 +8,7 @@ const inputCls = "pl-10 block w-full rounded bg-neutral-100 dark:bg-neutral-950 
 
 export default function AdminPanel() {
   const [formData, setFormData] = useState({
-    name: '', phone: '', business_id: '69edf7401e9164e3fd73e073'
+    name: '', phone: '', business_id: '69edf7401e9164e3fd73e073', template_name: 'generic_clinic_msg'
   });
   const [countryCode, setCountryCode] = useState('+91');
   const [status, setStatus] = useState<'idle' | 'sending' | 'success' | 'error'>('idle');
@@ -52,13 +52,26 @@ export default function AdminPanel() {
         <div className="xl:col-span-2">
           <div className="bg-white dark:bg-neutral-900 rounded border border-neutral-200 dark:border-neutral-800 overflow-hidden">
             <div className="p-6 md:p-8">
-              <div className="flex items-center gap-3 mb-8">
-                <div className="bg-neutral-100 dark:bg-neutral-800 p-2 rounded text-neutral-600 dark:text-neutral-300">
-                  <Send size={20} />
+              <div className="flex flex-col md:flex-row md:items-center gap-3 mb-8 justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="bg-neutral-100 dark:bg-neutral-800 p-2 rounded text-neutral-600 dark:text-neutral-300">
+                    <Send size={20} />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-medium text-neutral-900 dark:text-white">Recipient Details</h2>
+                    <p className="text-xs text-neutral-400 font-mono">Select a pre-approved template.</p>
+                  </div>
                 </div>
                 <div>
-                  <h2 className="text-lg font-medium text-neutral-900 dark:text-white">Recipient Details</h2>
-                  <p className="text-xs text-neutral-400 font-mono">Template: generic_clinic_msg</p>
+                  <select 
+                    name="template_name" 
+                    value={formData.template_name || 'generic_clinic_msg'} 
+                    onChange={handleChange}
+                    className="bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded p-2 text-sm text-neutral-900 dark:text-white outline-none"
+                  >
+                    <option value="generic_clinic_msg">Generic Announcement</option>
+                    <option value="review_request_no_followup">Review Request (No Follow-up)</option>
+                  </select>
                 </div>
               </div>
 
@@ -123,17 +136,34 @@ export default function AdminPanel() {
               Template Preview
             </h3>
             <div className="bg-neutral-950 rounded p-4 border border-neutral-800 font-mono text-xs leading-relaxed text-neutral-300 space-y-2">
-              <p className="text-neutral-500">// generic_clinic_msg</p>
-              <p>
-                Greetings from <span className="text-blue-400">Dr. Saachi Shingrani's Dental Care</span>,
-              </p>
-              <p>
-                 <span className="text-emerald-400">{formData.name || '{{1}}'}</span>, we sincerely hope you are doing well. Please feel free to reach out to us or book your next appointment at your convenience.
-              </p>
-              <div className="flex gap-2 mt-2 pt-2 border-t border-neutral-800">
-                <span className="bg-neutral-800 px-2 py-1 rounded text-[10px] uppercase text-neutral-400 flex items-center gap-1">🔗 Book through website</span>
-                <span className="bg-neutral-800 px-2 py-1 rounded text-[10px] uppercase text-neutral-400 flex items-center gap-1">↩ Contact Clinic</span>
-              </div>
+              <p className="text-neutral-500">// {formData.template_name || 'generic_clinic_msg'}</p>
+              
+              {(!formData.template_name || formData.template_name === 'generic_clinic_msg') ? (
+                <>
+                  <p>
+                    Greetings from <span className="text-blue-400">Dr. Saachi Shingrani's Dental Care</span>,
+                  </p>
+                  <p>
+                     <span className="text-emerald-400">{formData.name || '{{1}}'}</span>, we sincerely hope you are doing well. Please feel free to reach out to us or book your next appointment at your convenience.
+                  </p>
+                  <div className="flex gap-2 mt-4 pt-4 border-t border-neutral-800/50">
+                    <span className="bg-neutral-800 text-neutral-400 px-2 py-1 rounded border border-neutral-700 flex items-center gap-1"><span className="text-[10px]">🔗</span> BOOK THROUGH WEBSITE</span>
+                    <span className="bg-neutral-800 text-neutral-400 px-2 py-1 rounded border border-neutral-700 flex items-center gap-1"><span className="text-[10px]">↩</span> CONTACT CLINIC</span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p>
+                    Greetings <span className="text-emerald-400">{formData.name || '{{1}}'}</span> from <span className="text-blue-400">Dr Saachi Shingrani's Dental Care</span>, it would be really helpful if you shared your review about us:
+                  </p>
+                  <p className="text-blue-300 underline break-all">
+                    https://l.srsdental.com/r/abc123xyz
+                  </p>
+                  <p>
+                     Thank You!
+                  </p>
+                </>
+              )}
             </div>
             <p className="mt-3 text-xs text-neutral-400 font-mono">This template must be pre-approved in Meta Business Suite before dispatching.</p>
           </div>

@@ -165,7 +165,7 @@ export const triggerReview = async (req: Request, res: Response) => {
 // @access  Private
 export const sendDirectMessage = async (req: Request, res: Response) => {
     try {
-        const { business_id, phone, name } = req.body;
+        const { business_id, phone, name, template_name } = req.body;
         
         if (!business_id || !phone || !name) {
             return res.status(400).json({ message: 'Missing required fields: business_id, phone, name' });
@@ -174,21 +174,39 @@ export const sendDirectMessage = async (req: Request, res: Response) => {
         const business = await Business.findById(business_id);
         if (!business) return res.status(404).json({ message: 'Business not found' });
 
-        // Uses the pre-approved Meta template 'generic_clinic_msg'
+        const templateToSend = template_name || 'generic_clinic_msg';
+        let trackableAppointmentId;
+
+        if (templateToSend === 'review_request_no_followup') {
+            // We need a dummy appointment so that whatsappService can generate a tracking URL
+            // and so the dashboard "Links Sent" analytics counts it.
+            let customer = await Customer.findOne({ phone: phone.startsWith('+') ? phone : '+' + phone.replace(/\D/g, '') });
+            if (!customer) {
+                customer = await Customer.create({ phone, name, business_id: business._id, service_type: 'Manual Dispatch' });
+            }
+
+            const dummyAppt = await Appointment.create({
+                business_id: business._id,
+                patient_id: customer._id,
+                appointment_date: new Date(),
+                status: 'Completed',
+                service_type: 'Manual Dispatch',
+                review_requested: true,
+                review_requested_at: new Date()
+            });
+            trackableAppointmentId = dummyAppt._id.toString();
+        }
+
         const response = await sendWhatsAppMessage(
             phone,
             name,
             'General',
             business._id,
             undefined,
-            'generic_clinic_msg',
-            undefined,
+            templateToSend,
+            trackableAppointmentId,
             [name]
-        );
-
-
-
-        res.status(200).json({ message: 'Message dispatched successfully', sid: response.sid });
+        );        res.status(200).json({ message: 'Message dispatched successfully', sid: response.sid });
     } catch (error: any) {
         console.error("Send Direct Error:", error.response?.data || error);
         res.status(500).json({ message: 'Failed to dispatch message', error: error.response?.data?.error?.message || error.message });

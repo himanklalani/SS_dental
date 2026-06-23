@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Send, Image as ImageIcon, FileText, Check, CheckCheck, Clock, Download, User, Trash2, Video, ArrowLeft, Paperclip, X, RefreshCw, Reply, UserMinus } from 'lucide-react';
+import { Search, Send, Image as ImageIcon, FileText, Check, CheckCheck, Clock, Download, User, Trash2, Video, ArrowLeft, Paperclip, X, RefreshCw, Reply, UserMinus, MoreVertical, Copy, Share2 } from 'lucide-react';
 import api from '@/app/lib/api';
 
 export default function InboxPage() {
@@ -21,6 +21,15 @@ export default function InboxPage() {
     const [localReadReceipts, setLocalReadReceipts] = useState<Record<string, boolean>>({});
 
     const [businessId] = useState(process.env.NEXT_PUBLIC_BUSINESS_ID || '69edf7401e9164e3fd73e073');
+
+    // 3-dot message menu state
+    const [openMenuMsgId, setOpenMenuMsgId] = useState<string | null>(null);
+    const [copyToast, setCopyToast] = useState(false);
+
+    // Forward modal state
+    const [forwardMsg, setForwardMsg] = useState<any>(null);
+    const [forwardTargets, setForwardTargets] = useState<string[]>([]);
+    const [forwarding, setForwarding] = useState(false);
 
     useEffect(() => {
         if (businessId) {
@@ -198,6 +207,18 @@ export default function InboxPage() {
         const matchesUnread = showUnreadOnly ? isUnread(c) : true;
         return matchesSearch && matchesUnread;
     });
+
+    // Check if a given chat's window is open (for forward filtering)
+    const isChatWindowOpen = (chat: any) => {
+        const latest = chat.latestMessage;
+        if (!latest) return false;
+        if (latest.direction !== 'inbound') {
+            // No inbound message tracked - can't be sure, exclude to be safe
+            return false;
+        }
+        const lastTime = new Date(latest.createdAt).getTime();
+        return (Date.now() - lastTime) < 24 * 60 * 60 * 1000;
+    };
 
     const isWindowOpen = () => {
         if (!selectedChat?.last_message_received_at) return false;
@@ -467,13 +488,21 @@ export default function InboxPage() {
                                         )}
                                         <div className={`flex items-center gap-2 group animate-in fade-in slide-in-from-bottom-2 duration-300 ${isOutbound ? 'justify-end' : 'justify-start'}`}>
                                             {!isOutbound && (
-                                                <button 
-                                                    onClick={() => setReplyingToMessage(msg)}
-                                                    title="Reply to message"
-                                                    className="opacity-100 md:opacity-0 md:group-hover:opacity-100 p-2 text-gray-400 hover:text-blue-500 hover:bg-gray-200 rounded-full transition-all focus:opacity-100"
-                                                >
-                                                    <Reply className="w-4 h-4" />
-                                                </button>
+                                                <div className="relative flex-shrink-0">
+                                                    <button
+                                                        onClick={() => setOpenMenuMsgId(openMenuMsgId === msg._id ? null : msg._id)}
+                                                        className="opacity-100 md:opacity-0 md:group-hover:opacity-100 p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-200 rounded-full transition-all focus:opacity-100"
+                                                    >
+                                                        <MoreVertical className="w-4 h-4" />
+                                                    </button>
+                                                    {openMenuMsgId === msg._id && (
+                                                        <div className="absolute left-full top-0 ml-1 z-50 bg-white rounded-lg shadow-xl border border-gray-100 py-1 w-36 text-sm">
+                                                            <button onClick={() => { setReplyingToMessage(msg); setOpenMenuMsgId(null); }} className="w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-50 text-gray-700"><Reply className="w-4 h-4 text-blue-500" /> Reply</button>
+                                                            <button onClick={() => { navigator.clipboard.writeText(msg.content || ''); setCopyToast(true); setTimeout(() => setCopyToast(false), 2000); setOpenMenuMsgId(null); }} className="w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-50 text-gray-700"><Copy className="w-4 h-4 text-green-500" /> Copy</button>
+                                                            {msg.content && <button onClick={() => { setForwardMsg(msg); setForwardTargets([]); setOpenMenuMsgId(null); }} className="w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-50 text-gray-700"><Share2 className="w-4 h-4 text-purple-500" /> Forward</button>}
+                                                        </div>
+                                                    )}
+                                                </div>
                                             )}
                                             <div className={`max-w-[85%] md:max-w-[70%] rounded-xl px-3 md:px-4 py-2 shadow-sm relative ${isOutbound ? 'bg-[#d9fdd3] text-gray-800 rounded-tr-none' : 'bg-white text-gray-800 rounded-tl-none'}`}>
                                             
@@ -566,13 +595,21 @@ export default function InboxPage() {
                                             </div>
                                         </div>
                                         {isOutbound && (
-                                            <button 
-                                                onClick={() => setReplyingToMessage(msg)}
-                                                title="Reply to message"
-                                                className="opacity-100 md:opacity-0 md:group-hover:opacity-100 p-2 text-gray-400 hover:text-blue-500 hover:bg-gray-200 rounded-full transition-all focus:opacity-100"
-                                            >
-                                                <Reply className="w-4 h-4" />
-                                            </button>
+                                            <div className="relative flex-shrink-0">
+                                                <button
+                                                    onClick={() => setOpenMenuMsgId(openMenuMsgId === msg._id ? null : msg._id)}
+                                                    className="opacity-100 md:opacity-0 md:group-hover:opacity-100 p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-200 rounded-full transition-all focus:opacity-100"
+                                                >
+                                                    <MoreVertical className="w-4 h-4" />
+                                                </button>
+                                                {openMenuMsgId === msg._id && (
+                                                    <div className="absolute right-full top-0 mr-1 z-50 bg-white rounded-lg shadow-xl border border-gray-100 py-1 w-36 text-sm">
+                                                        <button onClick={() => { setReplyingToMessage(msg); setOpenMenuMsgId(null); }} className="w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-50 text-gray-700"><Reply className="w-4 h-4 text-blue-500" /> Reply</button>
+                                                        <button onClick={() => { navigator.clipboard.writeText(msg.content || ''); setCopyToast(true); setTimeout(() => setCopyToast(false), 2000); setOpenMenuMsgId(null); }} className="w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-50 text-gray-700"><Copy className="w-4 h-4 text-green-500" /> Copy</button>
+                                                        {msg.content && <button onClick={() => { setForwardMsg(msg); setForwardTargets([]); setOpenMenuMsgId(null); }} className="w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-50 text-gray-700"><Share2 className="w-4 h-4 text-purple-500" /> Forward</button>}
+                                                    </div>
+                                                )}
+                                            </div>
                                         )}
                                         </div>
                                     </React.Fragment>
@@ -580,6 +617,13 @@ export default function InboxPage() {
                             })}
                             <div ref={messagesEndRef} />
                         </div>
+
+                        {/* Copy Toast */}
+                        {copyToast && (
+                            <div className="fixed bottom-24 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs px-4 py-2 rounded-full shadow-lg z-50 animate-in fade-in">
+                                ✓ Copied to clipboard!
+                            </div>
+                        )}
 
                         {/* Replying To Preview Box */}
                         {replyingToMessage && (
@@ -677,6 +721,61 @@ export default function InboxPage() {
                     </div>
                 )}
             </div>
+
+            {/* Forward Modal */}
+            {forwardMsg && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setForwardMsg(null)}>
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm" onClick={e => e.stopPropagation()}>
+                        <div className="p-5 border-b border-gray-100 flex justify-between items-center">
+                            <h3 className="font-semibold text-gray-900 flex items-center gap-2"><Share2 className="w-4 h-4 text-purple-500" /> Forward Message</h3>
+                            <button onClick={() => setForwardMsg(null)} className="p-1 hover:bg-gray-100 rounded-full"><X className="w-4 h-4 text-gray-500" /></button>
+                        </div>
+                        <div className="px-4 py-3 bg-gray-50 border-b border-gray-100">
+                            <p className="text-xs text-gray-500 mb-1 font-semibold uppercase tracking-wider">Message Preview</p>
+                            <p className="text-sm text-gray-700 bg-white rounded-lg p-2 border border-gray-200 truncate">{forwardMsg.content}</p>
+                        </div>
+                        <div className="p-4 max-h-64 overflow-y-auto">
+                            <p className="text-xs text-gray-500 mb-3 font-semibold uppercase tracking-wider">Forward to (open windows only)</p>
+                            {chats.filter(c => c._id !== selectedChat?._id && isChatWindowOpen(c)).length === 0 ? (
+                                <p className="text-sm text-gray-500 text-center py-4">No patients with an open 24-hour window right now.</p>
+                            ) : (
+                                chats.filter(c => c._id !== selectedChat?._id && isChatWindowOpen(c)).map(c => (
+                                    <label key={c._id} className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded-lg cursor-pointer">
+                                        <input type="checkbox" className="w-4 h-4 accent-purple-500" checked={forwardTargets.includes(c._id)} onChange={e => setForwardTargets(prev => e.target.checked ? [...prev, c._id] : prev.filter(id => id !== c._id))} />
+                                        <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center shrink-0"><User className="w-4 h-4 text-purple-600" /></div>
+                                        <div><p className="text-sm font-medium text-gray-900">{c.name}</p><p className="text-xs text-gray-400">{c.phone}</p></div>
+                                    </label>
+                                ))
+                            )}
+                        </div>
+                        <div className="p-4 border-t border-gray-100">
+                            <button
+                                disabled={forwardTargets.length === 0 || forwarding}
+                                onClick={async () => {
+                                    setForwarding(true);
+                                    try {
+                                        await Promise.all(forwardTargets.map(cid =>
+                                            api.post('/chats/reply', { business_id: businessId, customer_id: cid, text: forwardMsg.content })
+                                        ));
+                                        setForwardMsg(null);
+                                        setForwardTargets([]);
+                                    } catch { alert('Failed to forward message.'); }
+                                    finally { setForwarding(false); }
+                                }}
+                                className="w-full py-2.5 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl font-semibold text-sm transition flex items-center justify-center gap-2"
+                            >
+                                {forwarding ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Share2 className="w-4 h-4" />}
+                                {forwarding ? 'Forwarding...' : `Forward to ${forwardTargets.length || ''} patient${forwardTargets.length !== 1 ? 's' : ''}`}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Overlay to close menu on outside click */}
+            {openMenuMsgId && (
+                <div className="fixed inset-0 z-40" onClick={() => setOpenMenuMsgId(null)} />
+            )}
         </div>
     );
 }
@@ -697,5 +796,5 @@ function MessageCircleIcon(props: any) {
     >
       <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" />
     </svg>
-  )
+  );
 }

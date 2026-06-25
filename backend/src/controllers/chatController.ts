@@ -5,7 +5,7 @@ import Customer from '../models/Customer';
 import Patient from '../models/Patient';
 import Message from '../models/Message';
 import Business from '../models/Business';
-import { sendWhatsAppMessage, sendWhatsAppMedia } from '../services/whatsappService';
+import { sendWhatsAppMessage, sendWhatsAppMedia, sendWhatsAppReaction } from '../services/whatsappService';
 
 // @desc    Get list of active chats (patients who have messaged or been messaged)
 // @route   GET /api/chats
@@ -317,5 +317,37 @@ export const sendMediaReply = async (req: Request, res: Response) => {
     } catch (error: any) {
         console.error("Send Media Reply Error:", error.response?.data || error);
         res.status(500).json({ message: 'Failed to send media', error: error.response?.data?.error?.message || error.message });
+    }
+};
+// @desc    React to a message
+// @route   POST /api/chats/react
+// @access  Private
+export const reactToMessage = async (req: Request, res: Response) => {
+    try {
+        const { message_id, emoji } = req.body;
+        if (!message_id) return res.status(400).json({ message: 'Missing message_id' });
+
+        const message = await Message.findById(message_id).populate('customer_id');
+        if (!message) return res.status(404).json({ message: 'Message not found' });
+        
+        const customer = message.customer_id as any;
+        if (!customer || !customer.phone) {
+            return res.status(400).json({ message: 'Customer phone not found' });
+        }
+
+        if (!message.whatsapp_message_id) {
+            return res.status(400).json({ message: 'Cannot react to a message without a whatsapp_message_id' });
+        }
+
+        await sendWhatsAppReaction(customer.phone, message.whatsapp_message_id, emoji || '');
+        
+        // Update database
+        message.clinic_reaction = emoji || '';
+        await message.save();
+
+        res.status(200).json(message);
+    } catch (error: any) {
+        console.error('Error reacting to message:', error);
+        res.status(500).json({ message: 'Server error', error: error.message });
     }
 };

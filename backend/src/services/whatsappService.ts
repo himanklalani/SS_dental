@@ -330,3 +330,41 @@ export const sendWhatsAppMedia = async (phone: string, fileBuffer: Buffer, mimeT
         throw error;
     }
 };
+
+export const sendWhatsAppReaction = async (phone: string, messageId: string, emoji: string) => {
+    const cleanPhone = phone.replace('+', '').replace(/\s/g, '').replace(/[^0-9]/g, '');
+
+    if (!META_API_TOKEN || !META_PHONE_NUMBER_ID) {
+        console.warn(`[Meta API] Missing configs. Would have reacted to ${messageId} with ${emoji}`);
+        return { sid: 'mock_sid_' + Date.now() };
+    }
+
+    const url = `https://graph.facebook.com/v25.0/${META_PHONE_NUMBER_ID}/messages`;
+    
+    // An empty emoji string un-reacts the message
+    const payload = {
+        messaging_product: "whatsapp",
+        recipient_type: "individual",
+        to: cleanPhone,
+        type: "reaction",
+        reaction: {
+            message_id: messageId,
+            emoji: emoji
+        }
+    };
+
+    try {
+        console.log(`[Meta API] Sending reaction ${emoji} to ${cleanPhone} for message ${messageId}...`);
+        const response = await axios.post(url, payload, {
+            headers: {
+                'Authorization': `Bearer ${META_API_TOKEN}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        console.log(`[Meta API] Reaction sent!`);
+        return { sid: response.data?.messages?.[0]?.id };
+    } catch (error: any) {
+        console.error('[Meta API] Reaction Failed:', error.response?.data || error.message);
+        throw error;
+    }
+};

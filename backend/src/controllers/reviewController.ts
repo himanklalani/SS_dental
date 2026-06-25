@@ -574,6 +574,19 @@ export const webhook = async (req: Request, res: Response) => {
                     // Send notification
                     sendNtfyNotification(customer.name, contentStr);
                 }
+                else if (messageObj.type === 'reaction') {
+                    const reactionObj = messageObj.reaction;
+                    const targetMessageId = reactionObj?.message_id;
+                    const emoji = reactionObj?.emoji || '';
+                    
+                    if (targetMessageId) {
+                        console.log(`[Webhook] User ${From} reacted with ${emoji || 'removed reaction'} to message ${targetMessageId}`);
+                        await Message.findOneAndUpdate(
+                            { whatsapp_message_id: targetMessageId },
+                            { $set: { reaction: emoji } }
+                        );
+                    }
+                }
             }
         }
 

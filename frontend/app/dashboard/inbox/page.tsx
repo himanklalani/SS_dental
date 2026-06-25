@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Send, Image as ImageIcon, FileText, Check, CheckCheck, Clock, Download, User, Trash2, Video, ArrowLeft, Paperclip, X, RefreshCw, Reply, UserMinus, MoreVertical, Copy, Share2 } from 'lucide-react';
+import { Search, Send, Image as ImageIcon, FileText, Check, CheckCheck, Clock, Download, User, Trash2, Video, ArrowLeft, Paperclip, X, RefreshCw, Reply, UserMinus, MoreVertical, Copy, Share2, Smile } from 'lucide-react';
 import api from '@/app/lib/api';
 
 export default function InboxPage() {
@@ -24,11 +24,23 @@ export default function InboxPage() {
 
     // 3-dot message menu state
     const [openMenuMsgId, setOpenMenuMsgId] = useState<string | null>(null);
+    const [showReactionMenuMsgId, setShowReactionMenuMsgId] = useState<string | null>(null);
     const [copyToast, setCopyToast] = useState(false);
 
     // Forward modal state
     const [forwardMsg, setForwardMsg] = useState<any>(null);
     const [forwardTargets, setForwardTargets] = useState<string[]>([]);
+
+    const handleReact = async (msgId: string, emoji: string) => {
+        try {
+            await api.post('/chats/react', { message_id: msgId, emoji });
+            setMessages(prev => prev.map(m => m._id === msgId ? { ...m, clinic_reaction: emoji } : m));
+        } catch (e) {
+            console.error("Failed to react", e);
+        }
+        setOpenMenuMsgId(null);
+        setShowReactionMenuMsgId(null);
+    };
     const [forwarding, setForwarding] = useState(false);
 
     useEffect(() => {
@@ -493,17 +505,38 @@ export default function InboxPage() {
                                                     {openMenuMsgId === msg._id && (
                                                         <div className="absolute left-full top-0 ml-1 z-50 bg-white rounded-lg shadow-xl border border-gray-100 py-1 w-36 text-sm">
                                                             <button onClick={() => { setReplyingToMessage(msg); setOpenMenuMsgId(null); }} className="w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-50 text-gray-700"><Reply className="w-4 h-4 text-blue-500" /> Reply</button>
+                                                            <button onClick={() => { setShowReactionMenuMsgId(showReactionMenuMsgId === msg._id ? null : msg._id); }} className="w-full flex items-center justify-between px-3 py-2 hover:bg-gray-50 text-gray-700">
+                                                                <div className="flex items-center gap-2"><Smile className="w-4 h-4 text-yellow-500" /> React</div>
+                                                            </button>
+                                                            {showReactionMenuMsgId === msg._id && (
+                                                                <div className="flex items-center justify-between px-3 py-2 bg-gray-50 border-t border-b border-gray-100">
+                                                                    {['👍', '❤️', '😂', '😮', '😢'].map(emoji => (
+                                                                        <button key={emoji} onClick={() => handleReact(msg._id, emoji)} className="hover:scale-125 transition-transform text-lg">{emoji}</button>
+                                                                    ))}
+                                                                    <button onClick={() => handleReact(msg._id, '')} className="text-xs text-gray-400 hover:text-red-500 ml-1 font-bold">X</button>
+                                                                </div>
+                                                            )}
                                                             <button onClick={() => { navigator.clipboard.writeText(msg.content || ''); setCopyToast(true); setTimeout(() => setCopyToast(false), 2000); setOpenMenuMsgId(null); }} className="w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-50 text-gray-700"><Copy className="w-4 h-4 text-green-500" /> Copy</button>
                                                             {msg.content && <button onClick={() => { setForwardMsg(msg); setForwardTargets([]); setOpenMenuMsgId(null); }} className="w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-50 text-gray-700"><Share2 className="w-4 h-4 text-purple-500" /> Forward</button>}
                                                         </div>
                                                     )}
                                                 </div>
                                             )}
-                                            <div className={`max-w-[85%] md:max-w-[70%] rounded-xl px-3 md:px-4 py-2 shadow-sm relative ${isOutbound ? 'bg-[#d9fdd3] text-gray-800 rounded-tr-none' : 'bg-white text-gray-800 rounded-tl-none'}`}>
+                                            <div id={`msg-${msg.whatsapp_message_id}`} className={`max-w-[85%] md:max-w-[70%] rounded-xl px-3 md:px-4 py-2 shadow-sm relative ${isOutbound ? 'bg-[#d9fdd3] text-gray-800 rounded-tr-none' : 'bg-white text-gray-800 rounded-tl-none'}`}>
                                             
                                             {/* Context/Replied-to Box */}
                                             {msg.context_message_id && (
-                                                <div className="bg-black/5 border-l-4 border-blue-400 p-2 rounded mb-2 flex flex-col min-w-0">
+                                                <div 
+                                                    className="bg-black/5 border-l-4 border-blue-400 p-2 rounded mb-2 flex flex-col min-w-0 cursor-pointer hover:bg-black/10 transition-colors"
+                                                    onClick={() => {
+                                                        const el = document.getElementById(`msg-${msg.context_message_id}`);
+                                                        if (el) {
+                                                            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                                            el.classList.add('bg-blue-100', 'transition-colors', 'duration-500');
+                                                            setTimeout(() => el.classList.remove('bg-blue-100'), 1500);
+                                                        }
+                                                    }}
+                                                >
                                                     <span className="text-[11px] font-bold text-blue-600 mb-0.5">
                                                         {(() => {
                                                             const ctx = messages.find(m => m.whatsapp_message_id === msg.context_message_id);
@@ -588,6 +621,14 @@ export default function InboxPage() {
                                                 {formatTime(msg.createdAt)}
                                                 {renderMessageStatus(msg)}
                                             </div>
+
+                                            {/* Reactions */}
+                                            {(msg.reaction || msg.clinic_reaction) && (
+                                                <div className={`absolute -bottom-2 ${isOutbound ? '-left-2' : '-right-2'} flex items-center bg-white rounded-full px-1.5 py-0.5 shadow border border-gray-100 text-[10px] z-10 space-x-0.5`}>
+                                                    {msg.clinic_reaction && <span>{msg.clinic_reaction}</span>}
+                                                    {msg.reaction && <span>{msg.reaction}</span>}
+                                                </div>
+                                            )}
                                         </div>
                                         {isOutbound && (
                                             <div className="relative flex-shrink-0">
@@ -600,6 +641,17 @@ export default function InboxPage() {
                                                 {openMenuMsgId === msg._id && (
                                                     <div className="absolute right-full top-0 mr-1 z-50 bg-white rounded-lg shadow-xl border border-gray-100 py-1 w-36 text-sm">
                                                         <button onClick={() => { setReplyingToMessage(msg); setOpenMenuMsgId(null); }} className="w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-50 text-gray-700"><Reply className="w-4 h-4 text-blue-500" /> Reply</button>
+                                                        <button onClick={() => { setShowReactionMenuMsgId(showReactionMenuMsgId === msg._id ? null : msg._id); }} className="w-full flex items-center justify-between px-3 py-2 hover:bg-gray-50 text-gray-700">
+                                                            <div className="flex items-center gap-2"><Smile className="w-4 h-4 text-yellow-500" /> React</div>
+                                                        </button>
+                                                        {showReactionMenuMsgId === msg._id && (
+                                                            <div className="flex items-center justify-between px-3 py-2 bg-gray-50 border-t border-b border-gray-100">
+                                                                {['👍', '❤️', '😂', '😮', '😢'].map(emoji => (
+                                                                    <button key={emoji} onClick={() => handleReact(msg._id, emoji)} className="hover:scale-125 transition-transform text-lg">{emoji}</button>
+                                                                ))}
+                                                                <button onClick={() => handleReact(msg._id, '')} className="text-xs text-gray-400 hover:text-red-500 ml-1 font-bold">X</button>
+                                                            </div>
+                                                        )}
                                                         <button onClick={() => { navigator.clipboard.writeText(msg.content || ''); setCopyToast(true); setTimeout(() => setCopyToast(false), 2000); setOpenMenuMsgId(null); }} className="w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-50 text-gray-700"><Copy className="w-4 h-4 text-green-500" /> Copy</button>
                                                         {msg.content && <button onClick={() => { setForwardMsg(msg); setForwardTargets([]); setOpenMenuMsgId(null); }} className="w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-50 text-gray-700"><Share2 className="w-4 h-4 text-purple-500" /> Forward</button>}
                                                     </div>

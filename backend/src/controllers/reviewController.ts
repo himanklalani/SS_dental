@@ -378,17 +378,27 @@ export const webhook = async (req: Request, res: Response) => {
                 const business = await Business.findOne(); // Grab first business assuming single clinic
                 if (!business) return;
 
-                // 1. Find or create customer atomically to prevent race conditions (e.g. 10 images sent at once)
+                // Only process actionable messages for 24h windows and auto-replies (ignore reactions/system events)
+                const isActionableMessage = ['text', 'button', 'interactive', 'image', 'document', 'audio', 'video'].includes(messageObj.type);
+
+                // 1. Find or create customer atomically to prevent race conditions
                 const now = new Date();
+                let updatePayload: any = {
+                    $setOnInsert: { 
+                        name: messageObj.profile?.name || 'Unknown Patient', 
+                        service_type: 'General' 
+                    },
+                    $set: { last_interaction: now }
+                };
+
+                // Only open the 24h window if it's an actionable message
+                if (isActionableMessage) {
+                    updatePayload.$set.last_message_received_at = now;
+                }
+
                 let customer = await Customer.findOneAndUpdate(
                     { phone: From, business_id: business._id },
-                    { 
-                        $setOnInsert: { 
-                            name: messageObj.profile?.name || 'Unknown Patient', 
-                            service_type: 'General' 
-                        },
-                        $set: { last_interaction: now, last_message_received_at: now }
-                    },
+                    updatePayload,
                     { upsert: true, new: false } // returns document BEFORE the update
                 );
 
@@ -405,54 +415,69 @@ export const webhook = async (req: Request, res: Response) => {
                     }
                 }
 
-                // Sync the Patient model 24-hour timestamp (if they exist there)
-                await Patient.updateMany({ phone: From }, { last_message_received_at: now });
-                console.log(`[Webhook] Opened 24h window for ${From}. Hours since last message: ${hoursSinceLastMessage.toFixed(2)}`);
+                // If actionable, sync the Patient model 24-hour timestamp and spawn closing timer
+                if (isActionableMessage) {
+                    await Patient.updateMany({ phone: From }, { last_message_received_at: now });
+                    console.log(`[Webhook] Opened 24h window for ${From}. Hours since last message: ${hoursSinceLastMessage.toFixed(2)}`);
 
-                // Spawn 23h 45m memory timer for window closure warning
-                const timeoutMs = 23.75 * 60 * 60 * 1000; // 23h 45m
-                setTimeout(async () => {
-                    try {
-                        const p = await Patient.findOne({ phone: From });
-                        if (p && p.last_message_received_at) {
-                            const hours = (Date.now() - new Date(p.last_message_received_at).getTime()) / (1000 * 60 * 60);
-                            // If they haven't sent another message (meaning it's exactly ~23.75h since the message that spawned this timer)
-                            if (hours >= 23.74 && hours < 24) {
-                                console.log(`[Webhook Timer] 24h window closing for ${From}, sending warning.`);
-                                const response = await sendWhatsAppMessage(
-                                    From,
-                                    customer.name,
-                                    'General',
-                                    business._id,
-                                    'Thanks for reaching out! Hope you were satisfied with the answer. If there is any need, please leave a message which will allow us to reach you back ASAP.'
-                                );
-                                // Message is now saved automatically by sendWhatsAppMessage
+                    // Spawn 23h 45m memory timer for window closure warning
+                    const timeoutMs = 23.75 * 60 * 60 * 1000; // 23h 45m
+                    setTimeout(async () => {
+                        try {
+                            const p = await Patient.findOne({ phone: From });
+                            if (p && p.last_message_received_at) {
+                                const hours = (Date.now() - new Date(p.last_message_received_at).getTime()) / (1000 * 60 * 60);
+                                // If they haven't sent another message (meaning it's exactly ~23.75h since the message that spawned this timer)
+                                if (hours >= 23.74 && hours < 24) {
+                                    console.log(`[Webhook Timer] 24h window closing for ${From}, sending warning.`);
+                                    const response = await sendWhatsAppMessage(
+                                        From,
+                                        customer.name,
+                                        'General',
+                                        business._id,
+                                        'Thanks for reaching out! Hope you were satisfied with the answer. If there is any need, please leave a message which will allow us to reach you back ASAP.'
+                                    );
+                                    // Message is now saved automatically by sendWhatsAppMessage
+                                }
                             }
+                        } catch (err) {
+                            console.error("[Webhook Timer Error]", err);
                         }
-                    } catch (err) {
-                        console.error("[Webhook Timer Error]", err);
-                    }
-                }, timeoutMs);
+                    }, timeoutMs);
+                }
 
                 // Send Auto-Reply if it's their first message or > 48 hours since their last message
-                // Note: We check this before the STOP command logic. If they said STOP, they'll opt out anyway.
-                // But typically STOP shouldn't trigger an auto reply, so let's check it.
                 let isStopCommand = false;
                 if (messageObj.type === 'text' && messageObj.text?.body?.trim().toUpperCase() === 'STOP') {
                     isStopCommand = true;
                 }
 
-                if (hoursSinceLastMessage > 48 && !isStopCommand) {
+                if (hoursSinceLastMessage > 48 && !isStopCommand && isActionableMessage) {
                     try {
-                        const response = await sendWhatsAppMessage(
-                            From, 
-                            customer.name, 
-                            'General', 
-                            business._id, 
-                            undefined, 
-                            'auto_reply_hello'
-                        );
-                        // Message is now saved automatically by sendWhatsAppMessage
+                        // Check if they have an upcoming appointment
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+
+                        const hasUpcomingAppointment = await Appointment.findOne({
+                            patient_id: customer._id,
+                            status: { $in: ['Booked', 'Confirmed'] },
+                            appointment_date: { $gte: today }
+                        });
+
+                        if (!hasUpcomingAppointment) {
+                            console.log(`[Webhook] Sending auto-reply to ${From} (No upcoming appointments found)`);
+                            const response = await sendWhatsAppMessage(
+                                From, 
+                                customer.name, 
+                                'General', 
+                                business._id, 
+                                undefined, 
+                                'auto_reply_hello'
+                            );
+                            // Message is now saved automatically by sendWhatsAppMessage
+                        } else {
+                            console.log(`[Webhook] Skipped auto-reply for ${From} (Patient has upcoming appointment)`);
+                        }
                     } catch (e) {
                         console.error('[Webhook] Failed to send auto reply', e);
                     }

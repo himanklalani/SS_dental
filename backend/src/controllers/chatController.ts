@@ -248,7 +248,12 @@ export const getMediaUrl = async (req: Request, res: Response) => {
         res.setHeader('Content-Disposition', `inline; filename="whatsapp-media-${mediaId}.${extension}"`);
         mediaDownloadResponse.data.pipe(res);
     } catch (error: any) {
-        console.error("Get Media Error:", error.response?.data || error.message);
+        if (error.response?.data?.error?.code === 100 || error.response?.status === 400 || error.response?.status === 404) {
+            // Meta Graph API throws Code 100 "Unsupported get request" when media is older than 30 days and deleted.
+            console.log(`[Media] Media ID ${req.params.mediaId} is expired or deleted from Meta servers.`);
+            return res.status(410).json({ message: 'Media Expired or Deleted by Meta' });
+        }
+        console.error("Get Media Error:", error.response?.data || error);
         res.status(500).json({ message: 'Failed to fetch media', error: error.message });
     }
 };

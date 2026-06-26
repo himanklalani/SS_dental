@@ -30,6 +30,7 @@ export default function InboxPage() {
     // Forward modal state
     const [forwardMsg, setForwardMsg] = useState<any>(null);
     const [forwardTargets, setForwardTargets] = useState<string[]>([]);
+    const [failedMedia, setFailedMedia] = useState<Record<string, boolean>>({});
 
     const handleReact = async (msgId: string, emoji: string) => {
         try {
@@ -557,31 +558,43 @@ export default function InboxPage() {
                                             {/* Media Rendering */}
                                             {msg.media_id && (
                                                 <div className="mb-2">
-                                                    {msg.message_type === 'image' && (
-                                                        <a href={`/api/chats/media/${msg.media_id}`} target="_blank" rel="noreferrer">
-                                                            <img 
-                                                                src={`/api/chats/media/${msg.media_id}`} 
-                                                                alt="Sent Image" 
-                                                                className="w-full max-h-60 object-cover rounded-lg mb-1 border border-black/5"
-                                                            />
-                                                        </a>
-                                                    )}
-                                                    {msg.message_type === 'video' && (
-                                                        <video 
-                                                            src={`/api/chats/media/${msg.media_id}`} 
-                                                            controls 
-                                                            className="w-full max-h-60 rounded-lg mb-1 border border-black/5"
-                                                        />
-                                                    )}
-                                                    {msg.message_type === 'audio' && (
-                                                        <div className="w-full mb-1 text-center">
-                                                            <audio 
-                                                                src={`/api/chats/media/${msg.media_id}`} 
-                                                                controls 
-                                                                className="w-full mb-1"
-                                                            />
-                                                            <p className="text-[10px] text-gray-500 italic mt-1 leading-tight">iPhone users: download to listen through your device</p>
+                                                    {failedMedia[msg.media_id] ? (
+                                                        <div className="bg-gray-100 p-3 rounded-lg border border-dashed border-gray-300 text-center mb-1">
+                                                            <p className="text-xs text-gray-500 font-medium">Media Expired</p>
+                                                            <p className="text-[10px] text-gray-400 mt-0.5">Please ask the sender to send the media file again :)</p>
                                                         </div>
+                                                    ) : (
+                                                        <>
+                                                            {msg.message_type === 'image' && (
+                                                                <a href={`/api/chats/media/${msg.media_id}`} target="_blank" rel="noreferrer">
+                                                                    <img 
+                                                                        src={`/api/chats/media/${msg.media_id}`} 
+                                                                        alt="Sent Image" 
+                                                                        className="w-full max-h-60 object-cover rounded-lg mb-1 border border-black/5"
+                                                                        onError={() => setFailedMedia(prev => ({ ...prev, [msg.media_id]: true }))}
+                                                                    />
+                                                                </a>
+                                                            )}
+                                                            {msg.message_type === 'video' && (
+                                                                <video 
+                                                                    src={`/api/chats/media/${msg.media_id}`} 
+                                                                    controls 
+                                                                    className="w-full max-h-60 rounded-lg mb-1 border border-black/5"
+                                                                    onError={() => setFailedMedia(prev => ({ ...prev, [msg.media_id]: true }))}
+                                                                />
+                                                            )}
+                                                            {msg.message_type === 'audio' && (
+                                                                <div className="w-full mb-1 text-center">
+                                                                    <audio 
+                                                                        src={`/api/chats/media/${msg.media_id}`} 
+                                                                        controls 
+                                                                        className="w-full mb-1"
+                                                                        onError={() => setFailedMedia(prev => ({ ...prev, [msg.media_id]: true }))}
+                                                                    />
+                                                                    <p className="text-[10px] text-gray-500 italic mt-1 leading-tight">iPhone users: download to listen through your device</p>
+                                                                </div>
+                                                            )}
+                                                        </>
                                                     )}
                                                     {msg.message_type === 'document' && (
                                                         <div className="flex items-center gap-3 bg-black/5 p-3 rounded-lg mb-1">

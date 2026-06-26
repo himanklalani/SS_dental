@@ -415,35 +415,10 @@ export const webhook = async (req: Request, res: Response) => {
                     }
                 }
 
-                // If actionable, sync the Patient model 24-hour timestamp and spawn closing timer
+                // If actionable, sync the Patient model 24-hour timestamp
                 if (isActionableMessage) {
                     await Patient.updateMany({ phone: From }, { last_message_received_at: now });
                     console.log(`[Webhook] Opened 24h window for ${From}. Hours since last message: ${hoursSinceLastMessage.toFixed(2)}`);
-
-                    // Spawn 23h 45m memory timer for window closure warning
-                    const timeoutMs = 23.75 * 60 * 60 * 1000; // 23h 45m
-                    setTimeout(async () => {
-                        try {
-                            const p = await Patient.findOne({ phone: From });
-                            if (p && p.last_message_received_at) {
-                                const hours = (Date.now() - new Date(p.last_message_received_at).getTime()) / (1000 * 60 * 60);
-                                // If they haven't sent another message (meaning it's exactly ~23.75h since the message that spawned this timer)
-                                if (hours >= 23.74 && hours < 24) {
-                                    console.log(`[Webhook Timer] 24h window closing for ${From}, sending warning.`);
-                                    const response = await sendWhatsAppMessage(
-                                        From,
-                                        customer.name,
-                                        'General',
-                                        business._id,
-                                        'Thanks for reaching out! Hope you were satisfied with the answer. If there is any need, please leave a message which will allow us to reach you back ASAP.'
-                                    );
-                                    // Message is now saved automatically by sendWhatsAppMessage
-                                }
-                            }
-                        } catch (err) {
-                            console.error("[Webhook Timer Error]", err);
-                        }
-                    }, timeoutMs);
                 }
 
                 // Send Auto-Reply if it's their first message or > 48 hours since their last message

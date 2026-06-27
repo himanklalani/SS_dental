@@ -290,15 +290,99 @@ export const getAnalytics = async (req: Request, res: Response) => {
 
     const totalSent = await Appointment.countDocuments({ business_id, review_requested: true });
     const totalClicked = await Appointment.countDocuments({ business_id, review_link_clicked: true });
-    
-    // We do not have a robust "conversions" tracker for Google Reviews directly, 
-    // so we set it to null or remove it.
     const ctr = totalSent > 0 ? (totalClicked / totalSent) * 100 : 0;
+
+    // Advanced Analytics
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    // Get start of week (Sunday)
+    const startOfWeek = new Date(startOfToday);
+    startOfWeek.setDate(startOfToday.getDate() - startOfToday.getDay());
+
+    // Get start of month
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const bId = new mongoose.Types.ObjectId(business_id as string);
+
+    // 1. Time-based volumes
+    const appointmentsToday = await Appointment.countDocuments({ business_id: bId, createdAt: { $gte: startOfToday } });
+    const appointmentsThisWeek = await Appointment.countDocuments({ business_id: bId, createdAt: { $gte: startOfWeek } });
+    const appointmentsThisMonth = await Appointment.countDocuments({ business_id: bId, createdAt: { $gte: startOfMonth } });
+
+    // 2. Seasonal Trend (Last 12 months)
+    const twelveMonthsAgo = new Date();
+    twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 11);
+    twelveMonthsAgo.setDate(1);
+    twelveMonthsAgo.setHours(0, 0, 0, 0);
+
+    const seasonalTrend = await Appointment.aggregate([
+        { $match: { business_id: bId, createdAt: { $gte: twelveMonthsAgo } } },
+        {
+            $group: {
+                _id: { year: { $year: "$createdAt" }, month: { $month: "$createdAt" } },
+                count: { $sum: 1 }
+            }
+        },
+        { $sort: { "_id.year": 1, "_id.month": 1 } }
+    ]);
+
+    // 3. Top VIP Patients
+    const topPatients = await Appointment.aggregate([
+        { $match: { business_id: bId } },
+        {
+            $group: {
+                _id: "$patient_id",
+                totalVisits: { $sum: 1 },
+                lastVisit: { $max: "$createdAt" }
+            }
+        },
+        { $sort: { totalVisits: -1 } },
+        { $limit: 10 },
+        {
+            $lookup: {
+                from: "patients",
+                localField: "_id",
+                foreignField: "_id",
+                as: "patientDetails"
+            }
+        },
+        { $unwind: "$patientDetails" },
+        {
+            $project: {
+                _id: 1,
+                totalVisits: 1,
+                lastVisit: 1,
+                name: "$patientDetails.name",
+                phone: "$patientDetails.phone"
+            }
+        }
+    ]);
+
+    // 4. Service Breakdown
+    const serviceBreakdown = await Appointment.aggregate([
+        { $match: { business_id: bId, service_type: { $ne: null } } },
+        {
+            $group: {
+                _id: "$service_type",
+                count: { $sum: 1 }
+            }
+        },
+        { $sort: { count: -1 } }
+    ]);
 
     res.status(200).json({
         totalSent,
         totalClicked,
         clickThroughRate: ctr.toFixed(2),
+        advanced: {
+            appointmentsToday,
+            appointmentsThisWeek,
+            appointmentsThisMonth,
+            seasonalTrend,
+            topPatients,
+            serviceBreakdown
+        }
     });
 
   } catch (error: any) {

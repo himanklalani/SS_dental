@@ -30,6 +30,24 @@ const normalizeData = (data: any) => {
 export const createPatient = async (req: Request, res: Response) => {
     try {
         const patientData = normalizeData(req.body);
+        
+        // Smart Duplicate Check: Same name & phone
+        const existingPatient = await Patient.findOne({
+            business_id: patientData.business_id,
+            name: patientData.name,
+            phone: patientData.phone
+        });
+
+        if (existingPatient) {
+            // Silently update any new fields without throwing an error
+            const updatedPatient = await Patient.findByIdAndUpdate(
+                existingPatient._id,
+                { $set: patientData },
+                { new: true }
+            );
+            return res.status(200).json(updatedPatient);
+        }
+
         const patient = new Patient(patientData);
         await patient.save();
         res.status(201).json(patient);

@@ -685,8 +685,14 @@ export const updateBusiness = async (req: Request, res: Response) => {
 
         if (message_templates) business.message_templates = message_templates;
         if (google_review_url) business.google_review_url = google_review_url;
-        if (holidays !== undefined) business.holidays = holidays;
-        if (blocked_shifts !== undefined) business.blocked_shifts = blocked_shifts;
+        if (holidays !== undefined) {
+            business.holidays = holidays;
+            business.markModified('holidays');
+        }
+        if (blocked_shifts !== undefined) {
+            business.blocked_shifts = blocked_shifts;
+            business.markModified('blocked_shifts');
+        }
 
         await business.save();
         res.status(200).json(business);

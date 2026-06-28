@@ -38,14 +38,16 @@ export default function SettingsPage() {
     fetchBusiness();
   }, [businessId]);
 
-  const handleSave = async () => {
+  const handleSave = async (overrides?: { holidays?: any[], blocked_shifts?: any[] }) => {
     setSaving(true);
+    const newHolidays = overrides?.holidays !== undefined ? overrides.holidays : business.holidays;
+    const newBlockedShifts = overrides?.blocked_shifts !== undefined ? overrides.blocked_shifts : business.blocked_shifts;
     try {
       await updateBusiness(businessId, { 
         google_review_url: business.google_review_url, 
         message_templates: business.message_templates,
-        holidays: business.holidays,
-        blocked_shifts: business.blocked_shifts
+        holidays: newHolidays,
+        blocked_shifts: newBlockedShifts
       });
       alert('Configuration updated.');
     } catch { alert('Failed to update configuration.'); }
@@ -54,30 +56,36 @@ export default function SettingsPage() {
 
   const addHoliday = () => {
     if (!newHoliday) return;
-    setBusiness({ ...business, holidays: [...business.holidays, newHoliday] });
+    const updated = [...business.holidays, newHoliday];
+    setBusiness({ ...business, holidays: updated });
     setNewHoliday('');
+    handleSave({ holidays: updated });
   };
 
   const removeHoliday = (index: number) => {
     const arr = [...business.holidays];
     arr.splice(index, 1);
     setBusiness({ ...business, holidays: arr });
+    handleSave({ holidays: arr });
   };
 
   const addBlockedShift = () => {
     if (!newBlockedDate || newBlockedShifts.length === 0) return;
+    const updated = [...business.blocked_shifts, { date: newBlockedDate, shifts: newBlockedShifts }];
     setBusiness({ 
         ...business, 
-        blocked_shifts: [...business.blocked_shifts, { date: newBlockedDate, shifts: newBlockedShifts }] 
+        blocked_shifts: updated 
     });
     setNewBlockedDate('');
     setNewBlockedShifts([]);
+    handleSave({ blocked_shifts: updated });
   };
 
   const removeBlockedShift = (index: number) => {
     const arr = [...business.blocked_shifts];
     arr.splice(index, 1);
     setBusiness({ ...business, blocked_shifts: arr });
+    handleSave({ blocked_shifts: arr });
   };
 
   const toggleShift = (shift: string) => {
@@ -98,7 +106,7 @@ export default function SettingsPage() {
           <h1 className="text-2xl font-semibold text-neutral-900 dark:text-white tracking-tight">Configuration</h1>
           <p className="text-neutral-500 mt-1 text-sm">System parameters and schedule overrides.</p>
         </div>
-        <button onClick={handleSave} disabled={saving}
+        <button onClick={() => handleSave()} disabled={saving}
           className="flex items-center justify-center gap-2 bg-neutral-900 dark:bg-white text-white dark:text-black px-6 py-2 rounded hover:bg-neutral-700 dark:hover:bg-neutral-200 transition-all disabled:opacity-70 w-full md:w-auto font-bold text-sm uppercase tracking-wider">
           {saving ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />}
           <span>{saving ? 'Saving...' : 'Save Changes'}</span>
@@ -141,8 +149,8 @@ export default function SettingsPage() {
                 <h3 className="text-sm font-bold text-neutral-900 dark:text-white uppercase tracking-wider mb-4 border-b border-neutral-200 dark:border-neutral-800 pb-2">Full Day Holidays</h3>
                 <div className="flex gap-2 mb-4">
                     <input type="date" value={newHoliday} onChange={(e) => setNewHoliday(e.target.value)} className={inputCls} />
-                    <button onClick={addHoliday} className="bg-neutral-900 dark:bg-white text-white dark:text-black px-4 rounded hover:bg-neutral-700 dark:hover:bg-neutral-200 flex items-center justify-center">
-                        <Plus size={16} />
+                    <button onClick={addHoliday} disabled={saving} className="bg-neutral-900 dark:bg-white text-white dark:text-black px-4 rounded hover:bg-neutral-700 dark:hover:bg-neutral-200 flex items-center justify-center disabled:opacity-50">
+                        <Plus size={16} /> Add
                     </button>
                 </div>
                 <div className="space-y-2">
@@ -152,8 +160,8 @@ export default function SettingsPage() {
                         return (
                         <div key={idx} className="flex justify-between items-center bg-neutral-50 dark:bg-neutral-800/50 p-2 rounded border border-neutral-200 dark:border-neutral-800">
                             <span className="text-sm font-mono text-neutral-900 dark:text-white">{dateStr}</span>
-                            <button onClick={() => removeHoliday(idx)} className="text-neutral-400 hover:text-rose-500 transition-colors p-1">
-                                <Trash2 size={14} />
+                            <button onClick={() => removeHoliday(idx)} disabled={saving} className="text-xs font-bold uppercase tracking-wider text-rose-500 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-3 py-1 rounded transition-colors disabled:opacity-50 flex items-center gap-1">
+                                <Trash2 size={12} /> Remove
                             </button>
                         </div>
                     )})}
@@ -173,7 +181,7 @@ export default function SettingsPage() {
                             </button>
                         ))}
                     </div>
-                    <button onClick={addBlockedShift} disabled={!newBlockedDate || newBlockedShifts.length === 0} className="w-full bg-neutral-900 dark:bg-white text-white dark:text-black py-2 rounded hover:bg-neutral-700 dark:hover:bg-neutral-200 flex items-center justify-center gap-2 disabled:opacity-50 text-xs font-bold uppercase tracking-wider">
+                    <button onClick={addBlockedShift} disabled={!newBlockedDate || newBlockedShifts.length === 0 || saving} className="w-full bg-neutral-900 dark:bg-white text-white dark:text-black py-2 rounded hover:bg-neutral-700 dark:hover:bg-neutral-200 flex items-center justify-center gap-2 disabled:opacity-50 text-xs font-bold uppercase tracking-wider">
                         <Plus size={14} /> Add Block
                     </button>
                 </div>
@@ -187,8 +195,8 @@ export default function SettingsPage() {
                                 <div className="text-sm font-mono text-neutral-900 dark:text-white">{dateStr}</div>
                                 <div className="text-xs text-rose-500 font-medium">{b.shifts.join(', ')}</div>
                             </div>
-                            <button onClick={() => removeBlockedShift(idx)} className="text-neutral-400 hover:text-rose-500 transition-colors p-1">
-                                <Trash2 size={14} />
+                            <button onClick={() => removeBlockedShift(idx)} disabled={saving} className="text-xs font-bold uppercase tracking-wider text-rose-500 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-3 py-1 rounded transition-colors disabled:opacity-50 flex items-center gap-1">
+                                <Trash2 size={12} /> Remove
                             </button>
                         </div>
                     )})}

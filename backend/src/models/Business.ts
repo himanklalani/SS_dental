@@ -8,6 +8,11 @@ export interface IBusiness extends Document {
     service_category: string;
     template: string;
   }[];
+  holidays?: Date[];
+  blocked_shifts?: {
+    date: Date;
+    shifts: string[];
+  }[];
   api_key: string;
   createdAt: Date;
 }
@@ -19,6 +24,11 @@ const BusinessSchema: Schema = new Schema({
   message_templates: [{
     service_category: { type: String, required: true },
     template: { type: String, required: true }
+  }],
+  holidays: [{ type: Date }],
+  blocked_shifts: [{
+    date: { type: Date, required: true },
+    shifts: [{ type: String, enum: ['Morning', 'Afternoon', 'Evening'] }]
   }],
   api_key: { type: String, required: true, unique: true },
 }, { timestamps: true });

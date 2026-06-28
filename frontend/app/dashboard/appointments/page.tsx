@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { getAppointments, createAppointment, getPatients, updateAppointment, deleteAppointment } from '../../lib/api';
+import { getAppointments, createAppointment, getPatients, updateAppointment, deleteAppointment, getBusiness } from '../../lib/api';
 import { Calendar, Clock, User, Plus, Search, Loader2, CheckCircle, XCircle, FileText, Edit, Trash2, Star, MessageSquare, MousePointerClick, RefreshCw } from 'lucide-react';
 
 const inputCls = "w-full bg-neutral-100 dark:bg-neutral-950 border border-neutral-300 dark:border-neutral-800 rounded p-3 text-neutral-900 dark:text-white focus:border-neutral-900 dark:focus:border-white outline-none transition-colors";
@@ -80,6 +80,8 @@ export default function AppointmentsPage() {
         status: 'Booked', notes: '', business_id: businessId
     });
 
+    const [businessConfig, setBusinessConfig] = useState<any>(null);
+
     useEffect(() => {
         const timer = setTimeout(() => { fetchData(); }, 300);
         return () => clearTimeout(timer);
@@ -88,13 +90,15 @@ export default function AppointmentsPage() {
     const fetchData = async (isRefresh = false) => {
         if (isRefresh) setRefreshing(true); else { setLoading(true); setError(null); }
         try {
-            const [apptRes, patientData] = await Promise.all([
+            const [apptRes, patientData, businessData] = await Promise.all([
                 getAppointments(businessId, { page, limit: 10, status: filterStatus, search: searchQuery, date: filterDate }),
-                getPatients(businessId)
+                getPatients(businessId),
+                getBusiness(businessId)
             ]);
             setAppointments(apptRes.data || []);
             setTotalPages(apptRes.totalPages || 1);
             setPatients(patientData);
+            setBusinessConfig(businessData);
         } catch (err: any) {
             setError(err.response?.data?.error || "Failed to load data.");
         } finally { setLoading(false); setRefreshing(false); }
@@ -210,6 +214,17 @@ export default function AppointmentsPage() {
                 return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
             });
     }, [newAppointment.appointment_date, appointments, editingAppointment]);
+
+    const isDateHoliday = React.useMemo(() => {
+        if (!newAppointment.appointment_date || !businessConfig?.holidays) return false;
+        return businessConfig.holidays.some((h: any) => h.split('T')[0] === newAppointment.appointment_date);
+    }, [newAppointment.appointment_date, businessConfig]);
+
+    const getBlockedShiftsForDate = React.useMemo(() => {
+        if (!newAppointment.appointment_date || !businessConfig?.blocked_shifts) return [];
+        const block = businessConfig.blocked_shifts.find((b: any) => b.date.split('T')[0] === newAppointment.appointment_date);
+        return block ? block.shifts : [];
+    }, [newAppointment.appointment_date, businessConfig]);
 
     const filteredAppointments = appointments.filter(a => !filterStatus || a.status === filterStatus);
 
@@ -406,7 +421,11 @@ export default function AppointmentsPage() {
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
-                                    <div><label className={labelCls}>Date</label><input required type="date" className={inputCls} value={newAppointment.appointment_date} onChange={e => setNewAppointment({...newAppointment, appointment_date: e.target.value})} /></div>
+                                    <div>
+                                        <label className={labelCls}>Date</label>
+                                        <input required type="date" className={inputCls} value={newAppointment.appointment_date} onChange={e => setNewAppointment({...newAppointment, appointment_date: e.target.value})} />
+                                        {isDateHoliday && <p className="text-xs text-rose-500 font-bold mt-1">The clinic is closed on this date (Holiday).</p>}
+                                    </div>
                                     <div>
                                         <label className={labelCls}>Time</label>
                                         <select required className={inputCls} value={newAppointment.appointment_time} onChange={e => {
@@ -432,9 +451,9 @@ export default function AppointmentsPage() {
                                             if (currentSlot !== slot) newTime = '';
                                             setNewAppointment({...newAppointment, preferred_slot: slot, appointment_time: newTime});
                                         }}>
-                                            <option value="Morning">Morning (10:00 - 1:45)</option>
-                                            <option value="Afternoon">Afternoon (2:00 - 5:15)</option>
-                                            <option value="Evening">Evening (5:30 - 7:30)</option>
+                                            <option value="Morning" disabled={getBlockedShiftsForDate.includes('Morning')}>Morning (10:00 - 1:45) {getBlockedShiftsForDate.includes('Morning') ? '(Closed)' : ''}</option>
+                                            <option value="Afternoon" disabled={getBlockedShiftsForDate.includes('Afternoon')}>Afternoon (2:00 - 5:15) {getBlockedShiftsForDate.includes('Afternoon') ? '(Closed)' : ''}</option>
+                                            <option value="Evening" disabled={getBlockedShiftsForDate.includes('Evening')}>Evening (5:30 - 7:30) {getBlockedShiftsForDate.includes('Evening') ? '(Closed)' : ''}</option>
                                         </select>
                                     </div>
                                     <div>
@@ -463,7 +482,7 @@ export default function AppointmentsPage() {
                                 </div>
                                 <div className="flex gap-3 pt-2">
                                     <button type="button" disabled={submitting} onClick={() => { setShowAddModal(false); setEditingAppointment(null); }} className="flex-1 py-3 bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-white rounded font-medium hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors disabled:opacity-50">Cancel</button>
-                                    <button type="submit" disabled={submitting} className="flex-1 py-3 flex justify-center items-center gap-2 bg-neutral-900 dark:bg-white text-white dark:text-black rounded font-bold hover:bg-neutral-700 dark:hover:bg-neutral-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                                    <button type="submit" disabled={submitting || isDateHoliday || getBlockedShiftsForDate.includes(newAppointment.preferred_slot)} className="flex-1 py-3 flex justify-center items-center gap-2 bg-neutral-900 dark:bg-white text-white dark:text-black rounded font-bold hover:bg-neutral-700 dark:hover:bg-neutral-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                                         {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
                                         {submitting ? 'Saving...' : (editingAppointment ? 'Update' : 'Book Appointment')}
                                     </button>

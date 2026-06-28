@@ -681,10 +681,12 @@ export const updateBusiness = async (req: Request, res: Response) => {
             return res.status(404).json({ message: 'Business not found' });
         }
 
-        const { message_templates, google_review_url } = req.body;
+        const { message_templates, google_review_url, holidays, blocked_shifts } = req.body;
 
         if (message_templates) business.message_templates = message_templates;
         if (google_review_url) business.google_review_url = google_review_url;
+        if (holidays !== undefined) business.holidays = holidays;
+        if (blocked_shifts !== undefined) business.blocked_shifts = blocked_shifts;
 
         await business.save();
         res.status(200).json(business);

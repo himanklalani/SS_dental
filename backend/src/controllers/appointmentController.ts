@@ -17,6 +17,26 @@ const checkDoubleBooking = async (business_id: string, appointment_date: Date, e
     return await Appointment.exists(query);
 };
 
+const checkScheduleConflicts = async (business_id: string, appointment_date: Date, preferred_slot?: string) => {
+    const business = await Business.findById(business_id);
+    if (!business) return null;
+
+    const requestDateStr = appointment_date.toISOString().split('T')[0];
+
+    if (business.holidays) {
+        const isHoliday = business.holidays.some(h => new Date(h).toISOString().split('T')[0] === requestDateStr);
+        if (isHoliday) return 'The clinic is closed on this date (Holiday).';
+    }
+
+    if (business.blocked_shifts && preferred_slot) {
+        const block = business.blocked_shifts.find(b => new Date(b.date).toISOString().split('T')[0] === requestDateStr);
+        if (block && block.shifts.includes(preferred_slot)) {
+            return `The ${preferred_slot} shift is closed on this date.`;
+        }
+    }
+    return null;
+};
+
 const getDefaultDoctor = async (business_id: string) => {
     let doctor = await Doctor.findOne({ business_id });
     if (!doctor) {
@@ -104,6 +124,13 @@ export const createAppointment = async (req: Request, res: Response) => {
             return res.status(400).json({ error: 'Patient is required. Please select a valid patient.' });
         }
 
+        if (appointmentData.appointment_date) {
+            const conflictError = await checkScheduleConflicts(appointmentData.business_id, new Date(appointmentData.appointment_date), appointmentData.preferred_slot);
+            if (conflictError) {
+                return res.status(400).json({ error: conflictError });
+            }
+        }
+
         if (appointmentData.appointment_date && ['Booked', 'Confirmed', 'Completed'].includes(appointmentData.status)) {
             const isDoubleBooked = await checkDoubleBooking(appointmentData.business_id, new Date(appointmentData.appointment_date));
             if (isDoubleBooked) {
@@ -171,6 +198,11 @@ export const updateAppointment = async (req: Request, res: Response) => {
         const newDate = req.body.appointment_date ? new Date(req.body.appointment_date) : oldAppointment.appointment_date;
 
         if (['Booked', 'Confirmed', 'Completed'].includes(newStatus) && newDate) {
+             const conflictError = await checkScheduleConflicts(oldAppointment.business_id.toString(), newDate, req.body.preferred_slot || oldAppointment.preferred_slot);
+             if (conflictError) {
+                 return res.status(400).json({ error: conflictError });
+             }
+
              const isDoubleBooked = await checkDoubleBooking(oldAppointment.business_id.toString(), newDate, id);
              if (isDoubleBooked) {
                  return res.status(400).json({ error: 'Time slot is already double booked.' });

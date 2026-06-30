@@ -402,6 +402,24 @@ export const createPublicBooking = async (req: Request, res: Response) => {
 
         await appointment.save();
 
+        try {
+            const ntfyTopic = process.env.NTFY_TOPIC || 'srs_dental_bookings';
+            const dateStr = finalDate.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short', year: 'numeric' });
+            const messageStr = `New Booking Request!\nPatient: ${patient.name}\nPhone: ${patient.phone}\nService: ${formattedService}\nDate: ${dateStr}\nSlot: ${preferred_slot || 'Morning'}`;
+            
+            await fetch(`https://ntfy.sh/${ntfyTopic}`, {
+                method: 'POST',
+                body: messageStr,
+                headers: {
+                    'Title': 'New Appointment Request',
+                    'Tags': 'calendar,bell',
+                    'Priority': 'urgent'
+                }
+            });
+        } catch (ntfyErr) {
+            console.error('Failed to send ntfy push:', ntfyErr);
+        }
+
         res.status(201).json({ 
             appointment,
             patient: { id: patient._id, isNew: !patient.createdAt || (Date.now() - patient.createdAt.getTime()) < 5000 }

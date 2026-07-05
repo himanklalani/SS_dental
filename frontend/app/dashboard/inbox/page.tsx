@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Send, Image as ImageIcon, FileText, Check, CheckCheck, Clock, Download, User, Trash2, Video, ArrowLeft, Paperclip, X, RefreshCw, Reply, UserMinus, MoreVertical, Copy, Share2, Smile } from 'lucide-react';
+import { Search, Send, Image as ImageIcon, FileText, Check, CheckCheck, Clock, Download, User, Trash2, Video, ArrowLeft, Paperclip, X, RefreshCw, Reply, UserMinus, MoreVertical, Copy, Share2, Smile, Phone } from 'lucide-react';
 import api from '@/app/lib/api';
 
 export default function InboxPage() {
@@ -420,8 +420,11 @@ export default function InboxPage() {
                                 </div>
                                 <div className="min-w-0">
                                     <div className="flex items-center gap-2">
-                                        <h2 className="font-semibold text-gray-800 truncate">
+                                        <h2 className="font-semibold text-gray-800 truncate flex items-center gap-2">
                                             {selectedChat.name === 'Unknown Patient' ? selectedChat.phone : selectedChat.name}
+                                            <a href={`tel:${selectedChat.phone}`} className="text-gray-400 hover:text-green-600 transition-colors" title="Call Patient">
+                                                <Phone size={14} />
+                                            </a>
                                         </h2>
                                         <button onClick={handleEditName} className="text-blue-500 hover:text-blue-700 text-xs font-medium shrink-0">Edit</button>
                                     </div>

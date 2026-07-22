@@ -35,8 +35,8 @@ const getSlotForTime = (time: string) => {
     if (!time) return 'Morning';
     const [h, m] = time.split(':').map(Number);
     const timeValue = h + m / 60;
-    if (timeValue >= 10 && timeValue <= 13) return 'Morning';
-    if (timeValue >= 14 && timeValue <= 17) return 'Afternoon';
+    if (timeValue >= 10 && timeValue <= 13.75) return 'Morning';
+    if (timeValue >= 14 && timeValue <= 17.25) return 'Afternoon';
     if (timeValue >= 17.5 && timeValue <= 19.5) return 'Evening';
     return ''; // outside bounds
 };

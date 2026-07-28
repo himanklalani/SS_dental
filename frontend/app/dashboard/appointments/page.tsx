@@ -9,6 +9,7 @@ const labelCls = "block text-xs font-bold text-neutral-500 uppercase tracking-wi
 
 const SERVICES = [
     "Routine Checkup",
+    "Teeth Cleaning",
     "Teeth Whitening",
     "Dental Implants",
     "Invisible Braces (Invisalign)",

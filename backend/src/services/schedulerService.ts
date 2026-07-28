@@ -3,6 +3,7 @@ import { sendWhatsAppMessage } from './whatsappService';
 import Appointment from '../models/Appointment';
 import Patient from '../models/Patient';
 import Business from '../models/Business';
+import Customer from '../models/Customer';
 
 // Map to store scheduled reminder jobs: appointmentId -> reminderTask
 const scheduledReminders = new Map<string, ScheduledTask>();
@@ -86,6 +87,20 @@ async function processReminder(appointmentId: string, isFollowUp: boolean = fals
         const business = appointment.business_id as any;
 
         if (!patient || !patient.phone || !appointment.appointment_date) return;
+
+        // Check window status and booking gap logic
+        const bookGapHours = (new Date(appointment.appointment_date).getTime() - (appointment.createdAt || new Date()).getTime()) / (1000 * 60 * 60);
+        
+        const customer = await Customer.findOne({ phone: patient.phone, business_id: business._id });
+        const now = new Date();
+        const isWindowOpen = customer?.last_message_received_at && (now.getTime() - customer.last_message_received_at.getTime()) < 24 * 60 * 60 * 1000;
+
+        // If the 24h window is closed, only send reminder if booked > 7 days in advance
+        if (!isWindowOpen && bookGapHours <= (7 * 24)) {
+            console.log(`[Cron] Skipped reminder for ${patient.phone}: Window is closed and booking was not > 7 days in advance`);
+            scheduledReminders.delete(appointmentId);
+            return;
+        }
 
         const timeOpts: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' };
         const timeStr = new Date(appointment.appointment_date).toLocaleTimeString('en-US', timeOpts);

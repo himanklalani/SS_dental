@@ -92,12 +92,13 @@ async function processReminder(appointmentId: string, isFollowUp: boolean = fals
         const bookGapHours = (new Date(appointment.appointment_date).getTime() - (appointment.createdAt || new Date()).getTime()) / (1000 * 60 * 60);
         
         const customer = await Customer.findOne({ phone: patient.phone, business_id: business._id });
-        const now = new Date();
-        const isWindowOpen = customer?.last_message_received_at && (now.getTime() - customer.last_message_received_at.getTime()) < 24 * 60 * 60 * 1000;
+        
+        // Did the patient reply anytime after the appointment was booked?
+        const hasRepliedSinceBooking = customer?.last_message_received_at && (customer.last_message_received_at.getTime() > (appointment.createdAt || new Date()).getTime());
 
-        // If the 24h window is closed, only send reminder if booked > 7 days in advance
-        if (!isWindowOpen && bookGapHours <= (7 * 24)) {
-            console.log(`[Cron] Skipped reminder for ${patient.phone}: Window is closed and booking was not > 7 days in advance`);
+        // If they never replied since booking, only send reminder if booked > 7 days in advance
+        if (!hasRepliedSinceBooking && bookGapHours <= (7 * 24)) {
+            console.log(`[Cron] Skipped reminder for ${patient.phone}: Patient never replied since booking and booking was not > 7 days in advance`);
             scheduledReminders.delete(appointmentId);
             return;
         }

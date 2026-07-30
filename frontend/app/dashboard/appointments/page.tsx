@@ -22,6 +22,12 @@ const SERVICES = [
     "Wisdom Tooth Removal",
     "Normal Tooth Treatment/Removal",
     "Minor Surgery",
+    "Smile Design",
+    "Full Mouth Rehab",
+    "Pediatric Dentistry",
+    "Dentures",
+    "Geriatric Dentistry",
+    "Diagnosis of Oral Lesions",
     "Other / Consult"
 ];
 

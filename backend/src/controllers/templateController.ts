@@ -85,7 +85,7 @@ export const createTemplate = async (req: Request, res: Response) => {
             return res.status(500).json({ error: 'META_API_TOKEN or META_WABA_ID env variable is not set' });
         }
 
-        const { name, category, language, header, body_text, footer_text, buttons, variable_samples } = req.body;
+        const { name, category, language, header, body_text, footer_text, buttons, variable_samples, media_id } = req.body;
         if (!name || !category || !body_text) {
             return res.status(400).json({ error: 'name, category, and body_text are required' });
         }
@@ -156,7 +156,7 @@ export const createTemplate = async (req: Request, res: Response) => {
         const metaStatus     = metaResponse.data.status || 'PENDING';
 
         // Save to local DB
-        const template = await Template.create({
+        const templateData: any = {
             meta_template_id: metaTemplateId,
             name: name.toLowerCase().replace(/\s+/g, '_'),
             language: language || 'en',
@@ -164,7 +164,13 @@ export const createTemplate = async (req: Request, res: Response) => {
             status: metaStatus,
             components,
             business_id: business._id
-        });
+        };
+        // Persist media_id if provided (used by Smart Interceptor for free-form image sends)
+        if (media_id) {
+            templateData.media_id = media_id;
+            templateData.media_uploaded_at = new Date();
+        }
+        const template = await Template.create(templateData);
 
         console.log(`[Templates] Created template "${template.name}" — Status: ${metaStatus}`);
         res.status(201).json(template);
@@ -188,8 +194,7 @@ export const uploadSample = async (req: Request, res: Response) => {
         const file = (req as any).file;
         if (!file) return res.status(400).json({ error: 'No file uploaded' });
 
-        // ── Step 1: Create a Resumable Upload session ──────────────────────────
-        // This endpoint requires the App ID and returns a session ID
+        // ── Step 1: Resumable Upload → produces header_handle for template creation ──
         const sessionRes = await axios.post(
             `https://graph.facebook.com/v21.0/${META_APP_ID}/uploads`,
             null,
@@ -203,14 +208,12 @@ export const uploadSample = async (req: Request, res: Response) => {
             }
         );
 
-        const sessionId = sessionRes.data.id; // e.g. "upload:AQ..."
+        const sessionId = sessionRes.data.id;
         if (!sessionId) {
             return res.status(500).json({ error: 'Meta did not return an upload session ID' });
         }
         console.log(`[Templates] Upload session created: ${sessionId}`);
 
-        // ── Step 2: Upload the raw file buffer to the session ──────────────────
-        // Returns { "h": "<handle>" } — this is what goes in header_handle
         const uploadRes = await axios.post(
             `https://graph.facebook.com/v21.0/${sessionId}`,
             file.buffer,
@@ -229,9 +232,38 @@ export const uploadSample = async (req: Request, res: Response) => {
         if (!handle) {
             return res.status(500).json({ error: 'Meta did not return a handle from upload session' });
         }
-
         console.log(`[Templates] Resumable upload complete. Header handle: ${handle}`);
-        res.json({ handle });
+
+        // ── Step 2 (parallel): Phone Media Upload → produces media_id for free-form sends ──
+        // This media_id can be reused by the Smart Interceptor when the 24h window is open.
+        let media_id: string | null = null;
+        try {
+            if (META_PHONE_NUMBER_ID) {
+                const form = new FormData();
+                form.append('messaging_product', 'whatsapp');
+                form.append('file', file.buffer, { filename: file.originalname, contentType: file.mimetype });
+
+                const mediaRes = await axios.post(
+                    `https://graph.facebook.com/v21.0/${META_PHONE_NUMBER_ID}/media`,
+                    form,
+                    {
+                        headers: {
+                            ...form.getHeaders(),
+                            Authorization: `Bearer ${META_API_TOKEN}`
+                        },
+                        maxBodyLength: Infinity,
+                        maxContentLength: Infinity
+                    }
+                );
+                media_id = mediaRes.data.id || null;
+                console.log(`[Templates] Phone media upload complete. Media ID: ${media_id}`);
+            }
+        } catch (mediaErr: any) {
+            // Non-fatal — interceptor will fall back to text-only if media_id is missing
+            console.warn('[Templates] Phone media upload failed (non-fatal):', mediaErr.response?.data || mediaErr.message);
+        }
+
+        res.json({ handle, media_id });
 
     } catch (error: any) {
         console.error('[Templates] Upload sample error:', error.response?.data || error.message);

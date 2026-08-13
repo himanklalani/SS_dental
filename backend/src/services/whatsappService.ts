@@ -3,6 +3,7 @@ import Business from '../models/Business';
 import Patient from '../models/Patient';
 import Customer from '../models/Customer';
 import Message from '../models/Message';
+import Template from '../models/Template';
 
 const META_API_TOKEN = process.env.META_API_TOKEN;
 const META_PHONE_NUMBER_ID = process.env.META_PHONE_NUMBER_ID;
@@ -70,6 +71,37 @@ export const sendWhatsAppMessage = async (phone: string, name: string, service_t
           readableTemplateText = `Greetings ${name}, as requested, your appointment at Dr. Saachi Shingrani's Dental Care for your ${templateParams?.[1] || service_type} has been successfully cancelled.`;
       } else if (templateName === 'appointment_rescheduled') {
           readableTemplateText = `Greetings ${name}, your appointment at Dr. Saachi Shingrani's Dental Care has been updated to ${templateParams?.[1]} at ${templateParams?.[2]} for ${templateParams?.[3] || service_type}. The previous time slot is now cancelled. Looking forward to seeing you! 😊`;
+      } else if (templateName) {
+          // ── DYNAMIC TEMPLATE LOOKUP ──────────────────────────────────────────────
+          // Template is not a hardcoded system template — look it up from our DB
+          try {
+              const dbTemplate = await Template.findOne({ name: templateName, status: 'APPROVED' });
+              if (dbTemplate) {
+                  const bodyComp = dbTemplate.components.find((c: any) => c.type === 'BODY');
+                  if (bodyComp?.text) {
+                      // Count variables in template: {{1}}, {{2}}, etc.
+                      const varMatches = bodyComp.text.match(/\{\{\d+\}\}/g) || [];
+                      const varValues: Record<string, string> = {};
+                      varMatches.forEach((v: string) => {
+                          const idx = parseInt(v.replace(/\D/g, ''));
+                          if (idx === 1) varValues[v] = name;
+                          else if (idx === 2) varValues[v] = service_type || business.name;
+                          else varValues[v] = ' '; // safe fallback for extra vars
+                      });
+                      // Build readable text by replacing {{n}} with actual values
+                      let reconstructed = bodyComp.text;
+                      Object.entries(varValues).forEach(([key, val]) => {
+                          reconstructed = reconstructed.split(key).join(val);
+                      });
+                      // Unescape \n stored by Meta as literal \n
+                      readableTemplateText = reconstructed.replace(/\\n/g, '\n');
+                      // Attach media_id to freeFormPayload data so interceptor can send image
+                      (payload as any).__dbTemplate = dbTemplate;
+                  }
+              }
+          } catch (lookupErr) {
+              console.warn('[Meta API] Custom template DB lookup failed (non-fatal):', lookupErr);
+          }
       }
 
       // 2. SMART ROUTING INTERCEPTION
@@ -78,32 +110,68 @@ export const sendWhatsAppMessage = async (phone: string, name: string, service_t
 
       if ((windowIsOpen || templateName === 'auto_reply_hello') && templateName && readableTemplateText) {
            overrideToFreeForm = true;
-           freeFormPayload = {
-               type: "text",
-               text: { body: readableTemplateText }
-           };
+           // Check if the custom DB template has a valid, non-expired media_id
+           const dbTemplate = (payload as any).__dbTemplate;
+           const isMediaExpired = dbTemplate?.media_uploaded_at
+               ? (Date.now() - new Date(dbTemplate.media_uploaded_at).getTime()) > 25 * 24 * 60 * 60 * 1000
+               : true;
+           const mediaId = dbTemplate?.media_id && !isMediaExpired ? dbTemplate.media_id : null;
+
+           if (mediaId) {
+               // Determine image type from stored component
+               const headerComp = dbTemplate.components?.find((c: any) => c.type === 'HEADER');
+               const mediaType = (headerComp?.format || 'IMAGE').toLowerCase();
+               freeFormPayload = {
+                   type: mediaType,
+                   [mediaType]: { id: mediaId, caption: readableTemplateText }
+               };
+               console.log(`[Meta API] Smart Routing: Intercepting with image (media_id: ${mediaId}) + caption`);
+           } else {
+               freeFormPayload = {
+                   type: 'text',
+                   text: { body: readableTemplateText }
+               };
+           }
       }
 
       if (overrideToFreeForm) {
           payload.type = freeFormPayload.type;
           if (freeFormPayload.type === 'interactive') payload.interactive = freeFormPayload.interactive;
           if (freeFormPayload.type === 'text') payload.text = freeFormPayload.text;
-          console.log(`[Meta API] Smart Routing: Intercepted ${templateName} -> Sending Free Form Message to ${cleanPhone}`);
+          if (freeFormPayload.type === 'image') { payload.type = 'image'; payload.image = freeFormPayload.image; }
+          if (freeFormPayload.type === 'video') { payload.type = 'video'; payload.video = freeFormPayload.video; }
+          if (freeFormPayload.type === 'document') { payload.type = 'document'; payload.document = freeFormPayload.document; }
+          console.log(`[Meta API] Smart Routing: Intercepted ${templateName} -> Sending Free Form (${freeFormPayload.type}) to ${cleanPhone}`);
       } else if (templateName) {
           // Default backwards compatible mapping if templateParams not provided
           // Note: review templates have hardcoded clinic names in Meta, so they only take Name (1) and Service (2).
           const isReviewTemplate = templateName === 'review_request' || templateName === 'review_follow_up';
           
-          const defaultParams = isReviewTemplate 
-              ? [
-                  { type: "text", text: name },
-                  { type: "text", text: customMessage || service_type }
-                ]
-              : [
-                  { type: "text", text: name },
-                  { type: "text", text: business.name },
-                  { type: "text", text: customMessage || service_type }
-                ];
+          // For custom DB templates: build params dynamically based on actual variable count
+          const dbTemplate = (payload as any).__dbTemplate;
+          let defaultParams: any[];
+          if (dbTemplate) {
+              const bodyComp = dbTemplate.components.find((c: any) => c.type === 'BODY');
+              const varMatches = bodyComp?.text?.match(/\{\{\d+\}\}/g) || [];
+              const uniqueVars = [...new Set(varMatches.map((v: string) => parseInt(v.replace(/\D/g, ''))))].sort() as number[];
+              defaultParams = uniqueVars.map((idx: number) => {
+                  if (idx === 1) return { type: 'text', text: name };
+                  if (idx === 2) return { type: 'text', text: service_type || business.name };
+                  return { type: 'text', text: ' ' }; // safe fallback for extra vars
+              });
+              if (defaultParams.length === 0) defaultParams = [{ type: 'text', text: name }];
+          } else if (isReviewTemplate) {
+              defaultParams = [
+                  { type: 'text', text: name },
+                  { type: 'text', text: customMessage || service_type }
+              ];
+          } else {
+              defaultParams = [
+                  { type: 'text', text: name },
+                  { type: 'text', text: business.name },
+                  { type: 'text', text: customMessage || service_type }
+              ];
+          }
 
           payload.type = "template";
           payload.template = {

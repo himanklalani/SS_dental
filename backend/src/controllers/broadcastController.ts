@@ -1,5 +1,4 @@
 import { Request, Response } from 'express';
-import mongoose from 'mongoose';
 import Customer from '../models/Customer';
 import Business from '../models/Business';
 import { queueReviewRequest } from '../services/queueService';
@@ -18,34 +17,26 @@ export const sendBroadcast = async (req: Request, res: Response) => {
         const business = await Business.findById(business_id);
         if (!business) return res.status(404).json({ message: 'Business not found' });
 
-        // Fetch all selected customers
-        const customers = await Customer.find({ 
+        // Fetch all selected customers, then filter opt-outs in JS
+        // (avoids needing to ensure opt_out field exists on all records)
+        const allSelected = await Customer.find({ 
             _id: { $in: customer_ids },
-            business_id: business._id,
-            opt_out: { $ne: true } // Don't send to opted out customers
+            business_id: business._id
         });
+
+        const customers = allSelected.filter(c => !c.opt_out);
+        const skippedOptOut = allSelected.length - customers.length;
 
         let queuedCount = 0;
 
-        // Push each customer to the queue to send the template safely
         for (const customer of customers) {
-            // We reuse queueService to handle safe async dispatching to Meta API.
-            // Since our queue service is originally designed for review_requests, 
-            // we will pass the requested template name via a custom param if possible, 
-            // but for now, the queue processor is hardcoded for review_request.
-            // Wait, we need to adapt queueService to handle generic templates!
-            
-            // To do this properly without breaking existing functionality, 
-            // we pass templateName in service_type temporarily or update the interface.
-            // Let's assume we update the queue interface to accept template_name!
-            
             await queueReviewRequest({
                 customer_id: customer._id,
                 business_id: business._id,
                 phone: customer.phone,
                 name: customer.name,
                 service_type: customer.service_type || 'General',
-                template_name: template_name // Note: We will need to update queueService to use this
+                template_name: template_name
             } as any);
 
             queuedCount++;
@@ -54,6 +45,7 @@ export const sendBroadcast = async (req: Request, res: Response) => {
         res.status(200).json({ 
             message: 'Broadcast queued successfully', 
             total_selected: customer_ids.length,
+            skipped_opted_out: skippedOptOut,
             total_queued: queuedCount 
         });
 

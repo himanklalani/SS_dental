@@ -114,6 +114,7 @@ export default function TemplatesPage() {
         setSubmitting(true);
         try {
             let headerHandle = '';
+            let headerMediaId = '';
 
             // If media header selected, upload the sample file first
             if (['IMAGE', 'VIDEO', 'DOCUMENT'].includes(form.header.type)) {
@@ -126,6 +127,7 @@ export default function TemplatesPage() {
                 try {
                     const result = await uploadTemplateSample(sampleFile);
                     headerHandle = result.handle;
+                    headerMediaId = result.media_id || '';
                 } catch {
                     showToast('Failed to upload sample media to Meta. Check META_APP_ID env var.', 'error');
                     setSubmitting(false);
@@ -144,7 +146,8 @@ export default function TemplatesPage() {
                 body_text: form.body_text,
                 variable_samples: varCount > 0 ? currentSamples : undefined,
                 footer_text: form.footer_text,
-                buttons: form.buttons
+                buttons: form.buttons,
+                media_id: headerMediaId || undefined
             };
             const created = await createTemplate(payload);
             setTemplates(prev => [created, ...prev]);

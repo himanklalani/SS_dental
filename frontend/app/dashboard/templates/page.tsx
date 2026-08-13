@@ -127,7 +127,10 @@ export default function TemplatesPage() {
             setForm({ name: '', category: 'UTILITY', language: 'en', header: { type: 'NONE', text: '' }, body_text: '', variableSamples: [], footer_text: '', buttons: [] });
             showToast('Template submitted to Meta for approval!');
         } catch (e: any) {
-            showToast(e?.response?.data?.error || 'Failed to create template', 'error');
+            console.error('Template submission error:', e?.response?.data);
+            const metaError = e?.response?.data?.details?.error?.message;
+            const fallbackError = e?.response?.data?.error;
+            showToast(metaError || fallbackError || 'Failed to create template', 'error');
         } finally {
             setSubmitting(false);
         }

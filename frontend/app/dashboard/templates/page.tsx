@@ -210,7 +210,7 @@ export default function TemplatesPage() {
                                             <tr className="hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors">
                                                 <td className="px-6 py-4">
                                                     <div className="font-mono font-semibold text-neutral-900 dark:text-white text-sm">{t.name}</div>
-                                                    {t.rejected_reason && (
+                                                    {t.rejected_reason && t.rejected_reason !== 'NONE' && (
                                                         <div className="text-xs text-red-500 mt-0.5 flex items-center gap-1">
                                                             <AlertTriangle size={11} /> {t.rejected_reason}
                                                         </div>

@@ -380,7 +380,7 @@ export default function TemplatesPage() {
                                 <label className={labelCls}>Header (Optional)</label>
                                 <div className="flex gap-2 mb-3">
                                     {['NONE', 'TEXT', 'IMAGE', 'VIDEO', 'DOCUMENT'].map(type => (
-                                        <button key={type} type="button" onClick={() => setForm(f => ({ ...f, header: { type, text: '' } }))} className={`px-3 py-1.5 text-xs font-semibold rounded transition-colors ${form.header.type === type ? 'bg-neutral-900 text-white dark:bg-white dark:text-black' : 'bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300'}`}>
+                                        <button key={type} type="button" onClick={() => { setForm(f => ({ ...f, header: { type, text: '', handle: '' } })); setSampleFile(null); }} className={`px-3 py-1.5 text-xs font-semibold rounded transition-colors ${form.header.type === type ? 'bg-neutral-900 text-white dark:bg-white dark:text-black' : 'bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300'}`}>
                                             {type === 'NONE' ? 'None' : type === 'TEXT' ? 'Text' : type.charAt(0) + type.slice(1).toLowerCase()}
                                         </button>
                                     ))}

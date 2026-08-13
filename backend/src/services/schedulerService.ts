@@ -157,3 +157,36 @@ async function processReviewFollowUp(appointmentId: string) {
         console.error(`[Cron] Error processing review follow-up:`, error);
     }
 }
+
+// ── AUTOMATED MEDIA ID REFRESH AUDIT ─────────────────────────────────────────
+// Runs daily at 3:00 AM to monitor custom template media_id timestamps.
+// WhatsApp media_ids expire after 30 days. This job logs templates nearing expiry.
+export const auditExpiringMediaIds = async () => {
+    try {
+        const Template = (await import('../models/Template')).default;
+        const now = Date.now();
+        const TWENTY_DAYS_MS = 20 * 24 * 60 * 60 * 1000;
+
+        const templatesWithMedia = await Template.find({ media_id: { $ne: null } });
+        console.log(`[Media Refresh Cron] Auditing ${templatesWithMedia.length} templates for media_id expiry...`);
+
+        for (const t of templatesWithMedia) {
+            const uploadedAt = t.media_uploaded_at ? new Date(t.media_uploaded_at).getTime() : 0;
+            const ageDays = Math.round((now - uploadedAt) / (1000 * 60 * 60 * 24));
+            
+            if (now - uploadedAt > TWENTY_DAYS_MS) {
+                console.warn(`[Media Refresh Warning] Template "${t.name}" media_id is ${ageDays} days old (${t.media_id}). Nearing 30-day WhatsApp expiration!`);
+            } else {
+                console.log(`[Media Refresh OK] Template "${t.name}" media_id is ${ageDays} days old. Valid.`);
+            }
+        }
+    } catch (err) {
+        console.error('[Media Refresh Error]:', err);
+    }
+};
+
+// Schedule daily 3:00 AM audit
+cron.schedule('0 3 * * *', () => {
+    auditExpiringMediaIds();
+});
+

@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import Customer from '../models/Customer';
 import Business from '../models/Business';
 import Patient from '../models/Patient';
+import BroadcastLog from '../models/BroadcastLog';
 import { queueReviewRequest } from '../services/queueService';
 
 // @desc    Send a broadcast message (template) to multiple patients
@@ -118,6 +119,19 @@ export const sendBroadcast = async (req: Request, res: Response) => {
             queuedCount++;
         }
 
+        // Log broadcast execution for history tracking
+        try {
+            await BroadcastLog.create({
+                business_id: business._id,
+                template_name,
+                total_selected: cIds.length + cContacts.length,
+                total_queued: queuedCount,
+                skipped_opted_out: skippedOptOut
+            });
+        } catch (logErr) {
+            console.warn('[BroadcastLog] Failed to log broadcast history:', logErr);
+        }
+
         res.status(200).json({
             message: 'Broadcast queued successfully',
             total_selected: cIds.length + cContacts.length,
@@ -130,3 +144,23 @@ export const sendBroadcast = async (req: Request, res: Response) => {
         res.status(500).json({ message: 'Failed to queue broadcast', error: error.message });
     }
 };
+
+// @desc    Get recent broadcast history
+// @route   GET /api/broadcast/history
+// @access  Private
+export const getBroadcastHistory = async (req: Request, res: Response) => {
+    try {
+        const { business_id } = req.query;
+        if (!business_id) return res.status(400).json({ error: 'Business ID required' });
+
+        const history = await BroadcastLog.find({ business_id })
+            .sort({ createdAt: -1 })
+            .limit(20);
+
+        res.status(200).json(history);
+    } catch (error: any) {
+        console.error('Fetch Broadcast History Error:', error);
+        res.status(500).json({ error: 'Failed to fetch broadcast history' });
+    }
+};
+

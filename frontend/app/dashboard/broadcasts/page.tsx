@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Users, Send, CheckCircle2, AlertCircle, Eye, Zap, Search, UserPlus, Upload, Trash2 } from 'lucide-react';
+import { Users, Send, CheckCircle2, AlertCircle, Eye, Zap, Search, UserPlus, Upload, Trash2, Download, History, Clock } from 'lucide-react';
 import api from '@/app/lib/api';
 
 // System templates always available (hardcoded, interceptor-aware)
@@ -31,6 +31,10 @@ export default function BroadcastsPage() {
     const [customTemplates, setCustomTemplates] = useState<any[]>([]);
     const [templatesLoading, setTemplatesLoading] = useState(true);
 
+    // Broadcast History State
+    const [broadcastLogs, setBroadcastLogs] = useState<any[]>([]);
+    const [logsLoading, setLogsLoading] = useState(true);
+
     const allTemplates = useMemo(() => [
         ...SYSTEM_TEMPLATES,
         ...customTemplates.map(t => {
@@ -54,6 +58,7 @@ export default function BroadcastsPage() {
         if (businessId) {
             fetchPatients();
             fetchCustomTemplates();
+            fetchBroadcastLogs();
         }
     }, [businessId]);
 
@@ -77,6 +82,18 @@ export default function BroadcastsPage() {
             console.error("Error fetching custom templates:", error);
         } finally {
             setTemplatesLoading(false);
+        }
+    };
+
+    const fetchBroadcastLogs = async () => {
+        try {
+            setLogsLoading(true);
+            const res = await api.get(`/broadcast/history?business_id=${businessId}`);
+            setBroadcastLogs(res.data);
+        } catch (error) {
+            console.error("Error fetching broadcast logs:", error);
+        } finally {
+            setLogsLoading(false);
         }
     };
 
@@ -127,9 +144,8 @@ export default function BroadcastsPage() {
             const lines = text.split('\n');
             const newContacts: any[] = [];
             
-            // Basic CSV parsing assuming "Name, Phone"
             lines.forEach((line, index) => {
-                if (index === 0 && line.toLowerCase().includes('name')) return; // skip header
+                if (index === 0 && line.toLowerCase().includes('name')) return;
                 
                 const parts = line.split(',');
                 if (parts.length >= 2) {
@@ -149,8 +165,19 @@ export default function BroadcastsPage() {
             }
         };
         reader.readAsText(file);
-        // Reset input
         if (fileInputRef.current) fileInputRef.current.value = '';
+    };
+
+    // --- Download Sample CSV ---
+    const handleDownloadSampleCsv = () => {
+        const csvContent = "data:text/csv;charset=utf-8,Name,Phone\nRohan Verma,9876543210\nPriya Sharma,+919876543211\nAnish Gupta,919004402797";
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", "sample_broadcast_contacts.csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     };
 
     // --- Send Logic ---
@@ -170,7 +197,7 @@ export default function BroadcastsPage() {
             const res = await api.post('/broadcast/send', {
                 business_id: businessId,
                 customer_ids: selectedPatients,
-                custom_contacts: customContacts, // Pass custom contacts directly
+                custom_contacts: customContacts,
                 template_name: selectedTemplateId
             });
 
@@ -178,9 +205,9 @@ export default function BroadcastsPage() {
             const skipMsg = skipped_opted_out > 0 ? `\n⚠️ ${skipped_opted_out} recipient(s) skipped (opted out).` : '';
             alert(`✅ ${total_queued} messages queued and sending!${skipMsg}`);
             
-            // Clear selections after sending
             setSelectedPatients([]);
             setCustomContacts([]);
+            fetchBroadcastLogs(); // Refresh history table
         } catch (error: any) {
             alert(error.response?.data?.message || "Failed to send broadcast.");
         } finally {
@@ -189,7 +216,7 @@ export default function BroadcastsPage() {
     };
 
     return (
-        <div className="max-w-6xl mx-auto space-y-6">
+        <div className="max-w-6xl mx-auto space-y-8 pb-12">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-800">Campaigns & Broadcasts</h1>
@@ -266,7 +293,7 @@ export default function BroadcastsPage() {
                 </div>
 
                 {/* Right Column: Audience Selection */}
-                <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col min-h-[600px]">
+                <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col min-h-[550px]">
                     
                     {/* Tabs */}
                     <div className="flex border-b border-gray-100 bg-gray-50/50">
@@ -304,7 +331,7 @@ export default function BroadcastsPage() {
                                 </div>
                             </div>
 
-                            <div className="flex-1 overflow-y-auto max-h-[500px]">
+                            <div className="flex-1 overflow-y-auto max-h-[450px]">
                                 {loading ? (
                                     <div className="flex justify-center p-12"><span className="animate-spin h-8 w-8 border-2 border-blue-500 rounded-full border-t-transparent"></span></div>
                                 ) : filteredPatients.length === 0 ? (
@@ -373,7 +400,7 @@ export default function BroadcastsPage() {
                                     <form onSubmit={handleAddManualContact} className="space-y-3">
                                         <input 
                                             type="text" 
-                                            placeholder="Patient Name" 
+                                            placeholder="Recipient Name" 
                                             required
                                             value={manualName}
                                             onChange={(e) => setManualName(e.target.value)}
@@ -398,7 +425,7 @@ export default function BroadcastsPage() {
                                 <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 flex flex-col justify-center items-center text-center">
                                     <Upload className="w-6 h-6 text-blue-500 mb-2" />
                                     <h4 className="font-medium text-gray-800 mb-1 text-sm">Upload CSV File</h4>
-                                    <p className="text-xs text-gray-500 mb-4 max-w-[200px]">Format: Name, Phone (2 columns, one per row)</p>
+                                    <p className="text-xs text-gray-500 mb-3 max-w-[200px]">Format: Name, Phone (2 columns, one per row)</p>
                                     
                                     <input 
                                         type="file" 
@@ -407,12 +434,23 @@ export default function BroadcastsPage() {
                                         ref={fileInputRef}
                                         onChange={handleFileUpload}
                                     />
-                                    <button 
-                                        onClick={() => fileInputRef.current?.click()}
-                                        className="bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-6 py-2 rounded-lg text-sm font-medium transition"
-                                    >
-                                        Browse Files
-                                    </button>
+                                    
+                                    <div className="flex flex-wrap gap-2 justify-center">
+                                        <button 
+                                            onClick={() => fileInputRef.current?.click()}
+                                            className="bg-blue-600 text-white hover:bg-blue-700 px-4 py-2 rounded-lg text-xs font-medium transition shadow-sm"
+                                        >
+                                            Browse Files
+                                        </button>
+                                        <button 
+                                            onClick={handleDownloadSampleCsv}
+                                            className="bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-1 transition"
+                                            title="Download sample CSV file"
+                                        >
+                                            <Download className="w-3.5 h-3.5 text-blue-500" />
+                                            Sample CSV
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
 
@@ -426,7 +464,7 @@ export default function BroadcastsPage() {
                                         </button>
                                     )}
                                 </div>
-                                <div className="flex-1 overflow-y-auto max-h-[300px] bg-white">
+                                <div className="flex-1 overflow-y-auto max-h-[250px] bg-white">
                                     {customContacts.length === 0 ? (
                                         <div className="p-8 text-center text-sm text-gray-500 flex flex-col items-center">
                                             <Users className="w-8 h-8 text-gray-300 mb-2" />
@@ -456,6 +494,84 @@ export default function BroadcastsPage() {
                         </div>
                     )}
                 </div>
+            </div>
+
+            {/* Bottom Section: Broadcast History & Logs */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 space-y-4">
+                <div className="flex justify-between items-center border-b border-gray-100 pb-3">
+                    <h3 className="font-semibold text-gray-800 flex items-center gap-2">
+                        <History className="w-4 h-4 text-blue-500" />
+                        Broadcast History & Campaign Logs
+                    </h3>
+                    <button 
+                        onClick={fetchBroadcastLogs}
+                        className="text-xs text-blue-600 hover:text-blue-700 flex items-center gap-1 font-medium"
+                    >
+                        <Clock className="w-3.5 h-3.5" /> Refresh History
+                    </button>
+                </div>
+
+                {logsLoading ? (
+                    <div className="flex justify-center p-8">
+                        <span className="animate-spin h-6 w-6 border-2 border-blue-500 rounded-full border-t-transparent"></span>
+                    </div>
+                ) : broadcastLogs.length === 0 ? (
+                    <div className="text-center p-8 text-gray-400 text-sm italic">
+                        No past broadcasts recorded yet. Sent broadcasts will appear here!
+                    </div>
+                ) : (
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left text-sm text-gray-600">
+                            <thead className="bg-gray-50 text-gray-700 border-b border-gray-200">
+                                <tr>
+                                    <th className="px-4 py-2.5">Date & Time</th>
+                                    <th className="px-4 py-2.5">Template Used</th>
+                                    <th className="px-4 py-2.5 text-center">Total Selected</th>
+                                    <th className="px-4 py-2.5 text-center">Queued</th>
+                                    <th className="px-4 py-2.5 text-center">Skipped (Opt-out)</th>
+                                    <th className="px-4 py-2.5 text-right">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                                {broadcastLogs.map((log) => (
+                                    <tr key={log._id} className="hover:bg-gray-50 transition">
+                                        <td className="px-4 py-3 text-xs text-gray-500 font-mono">
+                                            {new Date(log.createdAt).toLocaleString('en-IN', {
+                                                month: 'short',
+                                                day: 'numeric',
+                                                hour: '2-digit',
+                                                minute: '2-digit'
+                                            })}
+                                        </td>
+                                        <td className="px-4 py-3 font-medium text-gray-800">
+                                            {log.template_name?.replace(/_/g, ' ')}
+                                        </td>
+                                        <td className="px-4 py-3 text-center font-semibold text-gray-700">
+                                            {log.total_selected}
+                                        </td>
+                                        <td className="px-4 py-3 text-center text-blue-600 font-medium">
+                                            {log.total_queued}
+                                        </td>
+                                        <td className="px-4 py-3 text-center">
+                                            {log.skipped_opted_out > 0 ? (
+                                                <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">
+                                                    {log.skipped_opted_out}
+                                                </span>
+                                            ) : (
+                                                <span className="text-gray-400 text-xs">-</span>
+                                            )}
+                                        </td>
+                                        <td className="px-4 py-3 text-right">
+                                            <span className="inline-flex items-center gap-1 text-xs bg-green-100 text-green-700 px-2.5 py-0.5 rounded-full font-medium">
+                                                <CheckCircle2 className="w-3 h-3" /> Dispatched
+                                            </span>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
             </div>
         </div>
     );

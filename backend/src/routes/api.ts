@@ -52,8 +52,9 @@ router.delete('/chats/:customerId/contact', deleteContact);
 router.put('/chats/:customerId/name', updateCustomerName);
 
 // Broadcasts
-import { sendBroadcast } from '../controllers/broadcastController';
+import { sendBroadcast, getBroadcastHistory } from '../controllers/broadcastController';
 router.post('/broadcast/send', sendBroadcast);
+router.get('/broadcast/history', getBroadcastHistory);
 
 // Templates
 import { getTemplates, createTemplate, deleteTemplate, syncTemplates, uploadSample } from '../controllers/templateController';

@@ -26,23 +26,13 @@ const countVariables = (text: string) => {
     return matches ? [...new Set(matches)].length : 0;
 };
 
-const PRESETS = {
-    none: {
-        name: '', category: 'UTILITY', language: 'en',
-        header: { type: 'NONE', text: '' },
-        body_text: '', footer_text: '', buttons: []
-    },
-    appointment_confirmation: {
-        name: 'appointment_confirmation', category: 'UTILITY', language: 'en',
-        header: { type: 'NONE', text: '' },
-        body_text: "Greetings *{{1}}*, your appointment at Dr. Saachi Shingrani's Dental Care is confirmed for *{{2}}* at *{{3}}* for your *{{4}}* session.\n\nWe look forward to welcoming you and ensuring you have a comfortable visit😄\n\nFor reschedules & cancellations contact the clinic",
-        footer_text: '', buttons: []
-    },
-    review_request: {
-        name: 'review_request', category: 'MARKETING', language: 'en',
-        header: { type: 'TEXT', text: 'Share your experience!' },
-        body_text: "Greetings *{{1}}*, thank you for visiting Dr. Saachi Shingrani's Dental Care today for your *{{2}}*! Could you please take a moment to leave us a quick review:\n{{3}}\n\nThanks!",
-        footer_text: '', buttons: []
+const generateMarketingBody = (count: number) => {
+    switch (count) {
+        case 1: return "Hi {{1}}, we have a special offer for you! Contact us to learn more.";
+        case 2: return "Hi {{1}}, don't miss our special discount on {{2}}! Book your slot today.";
+        case 3: return "Hi {{1}}, we have a special offer on {{2}}! Visit us before {{3}} to claim it.";
+        case 4: return "Hi {{1}}, get a special offer on {{2}}! Valid until {{3}} at our {{4}} branch.";
+        default: return "";
     }
 };
 
@@ -315,21 +305,6 @@ export default function TemplatesPage() {
                         </div>
 
                         <form onSubmit={handleCreate} className="p-6 space-y-6">
-                            {/* Presets */}
-                            <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-lg p-4">
-                                <label className="block text-xs font-bold text-blue-800 dark:text-blue-300 uppercase tracking-wider mb-2">Load a Preset (Optional)</label>
-                                <select 
-                                    className={`${inputCls} border-blue-200 dark:border-blue-800 focus:border-blue-500`}
-                                    onChange={e => {
-                                        const p = PRESETS[e.target.value as keyof typeof PRESETS];
-                                        if (p) setForm(p);
-                                    }}
-                                >
-                                    <option value="none">-- Start from scratch --</option>
-                                    <option value="appointment_confirmation">Appointment Confirmation</option>
-                                    <option value="review_request">Review Request</option>
-                                </select>
-                            </div>
 
                             {/* Basics */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -378,7 +353,24 @@ export default function TemplatesPage() {
                             <div>
                                 <div className="flex items-center justify-between mb-1.5">
                                     <label className={labelCls} style={{ marginBottom: 0 }}>Body Text</label>
-                                    {varCount > 0 && <span className="text-xs text-blue-500 font-medium">{varCount} variable{varCount > 1 ? 's' : ''} detected</span>}
+                                    <div className="flex items-center gap-3">
+                                        <select 
+                                            className="text-xs bg-neutral-100 dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded px-2 py-1 outline-none"
+                                            onChange={(e) => {
+                                                const count = parseInt(e.target.value);
+                                                if (count > 0) {
+                                                    setForm(f => ({ ...f, body_text: generateMarketingBody(count), category: 'MARKETING' }));
+                                                }
+                                            }}
+                                        >
+                                            <option value="0">Autofill with variables...</option>
+                                            <option value="1">1 Variable</option>
+                                            <option value="2">2 Variables</option>
+                                            <option value="3">3 Variables</option>
+                                            <option value="4">4 Variables</option>
+                                        </select>
+                                        {varCount > 0 && <span className="text-xs text-blue-500 font-medium">{varCount} variable{varCount > 1 ? 's' : ''} detected</span>}
+                                    </div>
                                 </div>
                                 <textarea className={`${inputCls} min-h-[120px] resize-y`} placeholder="Hello {{1}}, here is your code: {{2}}" value={form.body_text} onChange={e => setForm(f => ({ ...f, body_text: e.target.value }))} required maxLength={1024} />
                             </div>

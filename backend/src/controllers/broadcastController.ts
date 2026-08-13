@@ -37,8 +37,8 @@ export const sendBroadcast = async (req: Request, res: Response) => {
                 business_id: business._id
             });
 
-            // Filter opted-out patients
-            const activePatients = patients.filter(p => !p.opt_out);
+            // Filter opted-out patients (Patient schema doesn't strictly define opt_out but we check it safely)
+            const activePatients = patients.filter(p => !(p as any).opt_out);
             skippedOptOut += (patients.length - activePatients.length);
 
             // Also check if any IDs matched customers (backward compat for customer-based broadcasts)

@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { handleTemplateStatusUpdate } from './templateController';
 import Customer from '../models/Customer';
 import Patient from '../models/Patient';
 import Message from '../models/Message';
@@ -419,6 +420,18 @@ export const verifyWebhook = (req: Request, res: Response) => {
 export const webhook = async (req: Request, res: Response) => {
     try {
         const { object, entry } = req.body;
+
+        // ── Handle Template Status Updates (e.g. APPROVED / REJECTED) ──────────────
+        if (object === 'whatsapp_business_account' && entry) {
+            for (const e of entry) {
+                for (const change of (e.changes || [])) {
+                    if (change.field === 'message_template_status_update' && change.value) {
+                        await handleTemplateStatusUpdate(change.value);
+                        return res.status(200).send('EVENT_RECEIVED');
+                    }
+                }
+            }
+        }
 
         if (object === 'whatsapp_business_account' && entry && entry[0]?.changes && entry[0].changes[0]?.value) {
             const value = entry[0].changes[0].value;

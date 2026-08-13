@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, Settings, ShieldCheck, Menu, X, Sun, Moon, Box, User, Calendar, Activity, LogOut, MessageCircle, Megaphone } from 'lucide-react';
+import { LayoutDashboard, Settings, ShieldCheck, Menu, X, Sun, Moon, Box, User, Calendar, Activity, LogOut, MessageCircle, Megaphone, FileText } from 'lucide-react';
 import Cookies from 'js-cookie';
 
 const Sidebar = () => {
@@ -39,6 +39,7 @@ const Sidebar = () => {
     { name: 'Appointments',    href: '/dashboard/appointments',   icon: Calendar },
     { name: 'Inbox',           href: '/dashboard/inbox',          icon: MessageCircle },
     { name: 'Broadcasts',      href: '/dashboard/broadcasts',     icon: Megaphone },
+    { name: 'Templates',       href: '/dashboard/templates',      icon: FileText },
     { name: 'Configuration',   href: '/dashboard/settings',       icon: Settings },
     { name: 'Healthcheck',     href: '/dashboard/health',         icon: Activity },
     { name: 'Manual Trigger',  href: '/dashboard/admin',          icon: ShieldCheck },

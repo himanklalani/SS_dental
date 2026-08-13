@@ -130,4 +130,25 @@ export const createPublicBooking = async (data: any) => {
     return response.data;
 };
 
+// Template Manager API
+export const getTemplates = async () => {
+    const response = await api.get('/templates');
+    return response.data;
+};
+
+export const createTemplate = async (data: any) => {
+    const response = await api.post('/templates', data);
+    return response.data;
+};
+
+export const syncTemplates = async () => {
+    const response = await api.post('/templates/sync');
+    return response.data;
+};
+
+export const deleteTemplate = async (id: string) => {
+    const response = await api.delete(`/templates/${id}`);
+    return response.data;
+};
+
 export default api;

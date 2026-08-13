@@ -55,6 +55,13 @@ router.put('/chats/:customerId/name', updateCustomerName);
 import { sendBroadcast } from '../controllers/broadcastController';
 router.post('/broadcast/send', sendBroadcast);
 
+// Templates
+import { getTemplates, createTemplate, deleteTemplate, syncTemplates } from '../controllers/templateController';
+router.get('/templates', getTemplates);
+router.post('/templates', createTemplate);
+router.post('/templates/sync', syncTemplates);
+router.delete('/templates/:id', deleteTemplate);
+
 // CRM - Patients
 router.get('/patients', getPatients);
 router.post('/patients', createPatient);

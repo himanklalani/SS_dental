@@ -9,10 +9,17 @@ import { queueReviewRequest } from '../services/queueService';
 // @access  Private
 export const sendBroadcast = async (req: Request, res: Response) => {
     try {
-        const { business_id, customer_ids, template_name } = req.body;
+        const { business_id, customer_ids, template_name, custom_contacts } = req.body;
 
-        if (!business_id || !customer_ids || !Array.isArray(customer_ids) || !template_name) {
-            return res.status(400).json({ message: 'Missing required fields or invalid customer_ids array' });
+        if (!business_id || !template_name) {
+            return res.status(400).json({ message: 'Missing required fields (business_id, template_name)' });
+        }
+
+        const cIds = Array.isArray(customer_ids) ? customer_ids : [];
+        const cContacts = Array.isArray(custom_contacts) ? custom_contacts : [];
+
+        if (cIds.length === 0 && cContacts.length === 0) {
+            return res.status(400).json({ message: 'Must provide either customer_ids or custom_contacts' });
         }
 
         const business = await Business.findById(business_id);
@@ -20,32 +27,78 @@ export const sendBroadcast = async (req: Request, res: Response) => {
 
         // The broadcast page lists PATIENTS (Patient model) but the queue needs to send to
         // actual phone numbers. We look them up from the Patient model directly.
-        const patients = await Patient.find({
-            _id: { $in: customer_ids },
-            business_id: business._id
-        });
-
-        // Filter opted-out patients
-        const activePatients = patients.filter(p => !p.opt_out);
-        const skippedOptOut = patients.length - activePatients.length;
-
-        // Also check if any IDs matched customers (backward compat for customer-based broadcasts)
+        let skippedOptOut = 0;
         let customersToSend: any[] = [];
-        if (activePatients.length === 0) {
-            // Fallback: try Customer model in case the IDs came from the customer list
-            const customers = await Customer.find({
-                _id: { $in: customer_ids },
+
+        if (cIds.length > 0) {
+            const patients = await Patient.find({
+                _id: { $in: cIds },
                 business_id: business._id
             });
-            customersToSend = customers.filter(c => !c.opt_out);
-        } else {
-            customersToSend = activePatients;
+
+            // Filter opted-out patients
+            const activePatients = patients.filter(p => !p.opt_out);
+            skippedOptOut += (patients.length - activePatients.length);
+
+            // Also check if any IDs matched customers (backward compat for customer-based broadcasts)
+            if (activePatients.length === 0) {
+                // Fallback: try Customer model in case the IDs came from the customer list
+                const customers = await Customer.find({
+                    _id: { $in: cIds },
+                    business_id: business._id
+                });
+                const activeCustomers = customers.filter(c => !c.opt_out);
+                skippedOptOut += (customers.length - activeCustomers.length);
+                customersToSend = [...activeCustomers];
+            } else {
+                customersToSend = [...activePatients];
+            }
+        }
+
+        // Process custom contacts (CSV / Manual Entry)
+        for (const contact of cContacts) {
+            if (!contact.name || !contact.phone) continue;
+            
+            let rawPhone = contact.phone.toString().trim();
+            // Clean phone number
+            rawPhone = rawPhone.replace(/[^\d+]/g, '');
+            // If no country code (+), assume India (+91)
+            if (!rawPhone.startsWith('+')) {
+                // If it starts with 0, strip it just in case
+                if (rawPhone.startsWith('0')) rawPhone = rawPhone.substring(1);
+                rawPhone = '+91' + rawPhone;
+            }
+
+            // Upsert into Customer model so they appear in Inbox
+            const customerRecord = await Customer.findOneAndUpdate(
+                { phone: rawPhone, business_id: business._id },
+                {
+                    $setOnInsert: {
+                        name: contact.name,
+                        phone: rawPhone,
+                        business_id: business._id,
+                        service_type: 'Broadcast Lead'
+                    }
+                },
+                { upsert: true, new: true }
+            );
+
+            if (customerRecord && !customerRecord.opt_out) {
+                customersToSend.push({
+                    _id: customerRecord._id,
+                    name: customerRecord.name,
+                    phone: customerRecord.phone,
+                    service_type: customerRecord.service_type
+                });
+            } else if (customerRecord?.opt_out) {
+                skippedOptOut++;
+            }
         }
 
         if (customersToSend.length === 0) {
             return res.status(200).json({
-                message: 'No valid patients found to send to (all may be opted out or IDs not found)',
-                total_selected: customer_ids.length,
+                message: 'No valid patients/contacts found to send to (all may be opted out)',
+                total_selected: cIds.length + cContacts.length,
                 skipped_opted_out: skippedOptOut,
                 total_queued: 0
             });
@@ -67,7 +120,7 @@ export const sendBroadcast = async (req: Request, res: Response) => {
 
         res.status(200).json({
             message: 'Broadcast queued successfully',
-            total_selected: customer_ids.length,
+            total_selected: cIds.length + cContacts.length,
             skipped_opted_out: skippedOptOut,
             total_queued: queuedCount
         });

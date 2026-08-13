@@ -82,7 +82,7 @@ export const createTemplate = async (req: Request, res: Response) => {
             return res.status(500).json({ error: 'META_API_TOKEN or META_WABA_ID env variable is not set' });
         }
 
-        const { name, category, language, header, body_text, footer_text, buttons } = req.body;
+        const { name, category, language, header, body_text, footer_text, buttons, variable_samples } = req.body;
         if (!name || !category || !body_text) {
             return res.status(400).json({ error: 'name, category, and body_text are required' });
         }
@@ -103,7 +103,11 @@ export const createTemplate = async (req: Request, res: Response) => {
         }
 
         // 2. Body (required)
-        components.push({ type: 'BODY', text: body_text });
+        const bodyComp: any = { type: 'BODY', text: body_text };
+        if (variable_samples && Array.isArray(variable_samples) && variable_samples.length > 0) {
+            bodyComp.example = { body_text: [variable_samples] };
+        }
+        components.push(bodyComp);
 
         // 3. Footer (optional)
         if (footer_text && footer_text.trim()) {

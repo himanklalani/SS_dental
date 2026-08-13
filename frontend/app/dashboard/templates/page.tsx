@@ -53,6 +53,7 @@ export default function TemplatesPage() {
         language:  'en',
         header:    { type: 'NONE', text: '' },
         body_text: '',
+        variableSamples: [] as string[],
         footer_text: '',
         buttons:   [] as any[]
     });
@@ -91,10 +92,18 @@ export default function TemplatesPage() {
 
     const handleCreate = async (e: React.FormEvent) => {
         e.preventDefault();
+        const varCount = countVariables(form.body_text);
         if (!form.name.trim() || !form.body_text.trim()) {
             showToast('Template name and body text are required', 'error');
             return;
         }
+        
+        const currentSamples = form.variableSamples.slice(0, varCount);
+        if (varCount > 0 && (currentSamples.length < varCount || currentSamples.some(s => !s.trim()))) {
+            showToast('Please provide a sample for all body variables', 'error');
+            return;
+        }
+
         setSubmitting(true);
         try {
             const payload = {
@@ -103,13 +112,14 @@ export default function TemplatesPage() {
                 language: form.language,
                 header: form.header,
                 body_text: form.body_text,
+                variable_samples: varCount > 0 ? currentSamples : undefined,
                 footer_text: form.footer_text,
                 buttons: form.buttons
             };
             const created = await createTemplate(payload);
             setTemplates(prev => [created, ...prev]);
             setShowModal(false);
-            setForm({ name: '', category: 'UTILITY', language: 'en', header: { type: 'NONE', text: '' }, body_text: '', footer_text: '', buttons: [] });
+            setForm({ name: '', category: 'UTILITY', language: 'en', header: { type: 'NONE', text: '' }, body_text: '', variableSamples: [], footer_text: '', buttons: [] });
             showToast('Template submitted to Meta for approval!');
         } catch (e: any) {
             showToast(e?.response?.data?.error || 'Failed to create template', 'error');
@@ -372,7 +382,34 @@ export default function TemplatesPage() {
                                         {varCount > 0 && <span className="text-xs text-blue-500 font-medium">{varCount} variable{varCount > 1 ? 's' : ''} detected</span>}
                                     </div>
                                 </div>
-                                <textarea className={`${inputCls} min-h-[120px] resize-y`} placeholder="Hello {{1}}, here is your code: {{2}}" value={form.body_text} onChange={e => setForm(f => ({ ...f, body_text: e.target.value }))} required maxLength={1024} />
+                                <textarea className={`${inputCls} min-h-[120px] resize-y mb-3`} placeholder="Hello {{1}}, here is your code: {{2}}" value={form.body_text} onChange={e => setForm(f => ({ ...f, body_text: e.target.value }))} required maxLength={1024} />
+                                
+                                {varCount > 0 && (
+                                    <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 p-4 rounded-lg">
+                                        <p className="text-xs font-bold text-blue-800 dark:text-blue-300 uppercase tracking-wider mb-3">Variable Samples (Required by Meta)</p>
+                                        <div className="space-y-2.5">
+                                            {Array.from({ length: varCount }).map((_, i) => (
+                                                <div key={i} className="flex items-center gap-3">
+                                                    <span className="text-xs font-mono font-bold text-blue-600 dark:text-blue-400 bg-white dark:bg-neutral-900 px-2 py-1 rounded border border-blue-200 dark:border-blue-800 shrink-0">
+                                                        {`{{${i + 1}}}`}
+                                                    </span>
+                                                    <input 
+                                                        type="text" 
+                                                        className={inputCls} 
+                                                        placeholder={`Sample for {{${i + 1}}} (e.g. John, Friday)`}
+                                                        value={form.variableSamples[i] || ''}
+                                                        onChange={e => {
+                                                            const newSamples = [...form.variableSamples];
+                                                            newSamples[i] = e.target.value;
+                                                            setForm(f => ({ ...f, variableSamples: newSamples }));
+                                                        }}
+                                                        required 
+                                                    />
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Footer */}

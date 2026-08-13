@@ -82,7 +82,7 @@ export const createTemplate = async (req: Request, res: Response) => {
             return res.status(500).json({ error: 'META_API_TOKEN or META_WABA_ID env variable is not set' });
         }
 
-        const { name, category, language, body_text } = req.body;
+        const { name, category, language, header, body_text, footer_text, buttons } = req.body;
         if (!name || !category || !body_text) {
             return res.status(400).json({ error: 'name, category, and body_text are required' });
         }
@@ -90,13 +90,42 @@ export const createTemplate = async (req: Request, res: Response) => {
         const business = await getDefaultBusiness();
         if (!business) return res.status(404).json({ error: 'Business not found' });
 
-        // Build Meta-compatible components array
-        const components = [
-            {
-                type: 'BODY',
-                text: body_text
+        // ── Build Meta-compatible components array ──────────────────────────────
+        const components: any[] = [];
+
+        // 1. Header (optional)
+        if (header && header.type && header.type !== 'NONE') {
+            if (header.type === 'TEXT' && header.text) {
+                components.push({ type: 'HEADER', format: 'TEXT', text: header.text });
+            } else if (['IMAGE', 'VIDEO', 'DOCUMENT'].includes(header.type)) {
+                components.push({ type: 'HEADER', format: header.type });
             }
-        ];
+        }
+
+        // 2. Body (required)
+        components.push({ type: 'BODY', text: body_text });
+
+        // 3. Footer (optional)
+        if (footer_text && footer_text.trim()) {
+            components.push({ type: 'FOOTER', text: footer_text.trim() });
+        }
+
+        // 4. Buttons (optional)
+        if (buttons && buttons.length > 0) {
+            const metaButtons = buttons
+                .filter((b: any) => b.type && (b.text || b.url || b.phone_number))
+                .map((b: any) => {
+                    if (b.type === 'QUICK_REPLY')    return { type: 'QUICK_REPLY', text: b.text };
+                    if (b.type === 'URL')            return { type: 'URL',         text: b.text, url: b.url };
+                    if (b.type === 'PHONE_NUMBER')   return { type: 'PHONE_NUMBER',text: b.text, phone_number: b.phone_number };
+                    return null;
+                })
+                .filter(Boolean);
+
+            if (metaButtons.length > 0) {
+                components.push({ type: 'BUTTONS', buttons: metaButtons });
+            }
+        }
 
         const url = `https://graph.facebook.com/v25.0/${META_WABA_ID}/message_templates`;
         const metaResponse = await axios.post(url, {
@@ -133,6 +162,7 @@ export const createTemplate = async (req: Request, res: Response) => {
         res.status(500).json({ error: 'Failed to create template', details: error.response?.data });
     }
 };
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // @desc   Delete a template from Meta and local DB

@@ -67,7 +67,13 @@ export const sendBroadcast = async (req: Request, res: Response) => {
             if (!rawPhone.startsWith('+')) {
                 // If it starts with 0, strip it just in case
                 if (rawPhone.startsWith('0')) rawPhone = rawPhone.substring(1);
-                rawPhone = '+91' + rawPhone;
+                
+                // If the user typed 91 as the country code without the +, don't add another 91
+                if (rawPhone.startsWith('91') && rawPhone.length === 12) {
+                    rawPhone = '+' + rawPhone;
+                } else {
+                    rawPhone = '+91' + rawPhone;
+                }
             }
 
             // Upsert into Customer model so they appear in Inbox

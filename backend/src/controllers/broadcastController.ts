@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import Customer from '../models/Customer';
 import Business from '../models/Business';
+import Patient from '../models/Patient';
 import { queueReviewRequest } from '../services/queueService';
 
 // @desc    Send a broadcast message (template) to multiple patients
@@ -17,36 +18,58 @@ export const sendBroadcast = async (req: Request, res: Response) => {
         const business = await Business.findById(business_id);
         if (!business) return res.status(404).json({ message: 'Business not found' });
 
-        // Fetch all selected customers, then filter opt-outs in JS
-        // (avoids needing to ensure opt_out field exists on all records)
-        const allSelected = await Customer.find({ 
+        // The broadcast page lists PATIENTS (Patient model) but the queue needs to send to
+        // actual phone numbers. We look them up from the Patient model directly.
+        const patients = await Patient.find({
             _id: { $in: customer_ids },
             business_id: business._id
         });
 
-        const customers = allSelected.filter(c => !c.opt_out);
-        const skippedOptOut = allSelected.length - customers.length;
+        // Filter opted-out patients
+        const activePatients = patients.filter(p => !p.opt_out);
+        const skippedOptOut = patients.length - activePatients.length;
+
+        // Also check if any IDs matched customers (backward compat for customer-based broadcasts)
+        let customersToSend: any[] = [];
+        if (activePatients.length === 0) {
+            // Fallback: try Customer model in case the IDs came from the customer list
+            const customers = await Customer.find({
+                _id: { $in: customer_ids },
+                business_id: business._id
+            });
+            customersToSend = customers.filter(c => !c.opt_out);
+        } else {
+            customersToSend = activePatients;
+        }
+
+        if (customersToSend.length === 0) {
+            return res.status(200).json({
+                message: 'No valid patients found to send to (all may be opted out or IDs not found)',
+                total_selected: customer_ids.length,
+                skipped_opted_out: skippedOptOut,
+                total_queued: 0
+            });
+        }
 
         let queuedCount = 0;
-
-        for (const customer of customers) {
+        for (const patient of customersToSend) {
+            console.log(`[Broadcast] Queuing ${template_name} for ${patient.name} (${patient.phone})`);
             await queueReviewRequest({
-                customer_id: customer._id,
+                customer_id: patient._id,
                 business_id: business._id,
-                phone: customer.phone,
-                name: customer.name,
-                service_type: customer.service_type || 'General',
+                phone: patient.phone,
+                name: patient.name,
+                service_type: (patient as any).service_type || 'General',
                 template_name: template_name
             } as any);
-
             queuedCount++;
         }
 
-        res.status(200).json({ 
-            message: 'Broadcast queued successfully', 
+        res.status(200).json({
+            message: 'Broadcast queued successfully',
             total_selected: customer_ids.length,
             skipped_opted_out: skippedOptOut,
-            total_queued: queuedCount 
+            total_queued: queuedCount
         });
 
     } catch (error: any) {

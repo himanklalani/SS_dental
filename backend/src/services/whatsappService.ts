@@ -192,12 +192,36 @@ export const sendWhatsAppMessage = async (phone: string, name: string, service_t
           };
 
           if (templateName !== 'hello_world') {
-              payload.template.components = [
-                  {
-                      type: "body",
-                      parameters: templateParams ? templateParams.map(text => ({ type: "text", text })) : defaultParams
+              const sendComponents: any[] = [];
+
+              // If the DB template has a media HEADER, inject it into the send payload
+              // Meta requires this even though the media type is defined in the template — you must supply the actual media.
+              if (dbTemplate) {
+                  const headerComp = dbTemplate.components?.find((c: any) => c.type === 'HEADER');
+                  if (headerComp && ['IMAGE', 'VIDEO', 'DOCUMENT'].includes(headerComp.format)) {
+                      const isMediaExpired = dbTemplate.media_uploaded_at
+                          ? (Date.now() - new Date(dbTemplate.media_uploaded_at).getTime()) > 25 * 24 * 60 * 60 * 1000
+                          : true;
+                      const mediaId = dbTemplate.media_id && !isMediaExpired ? dbTemplate.media_id : null;
+                      if (mediaId) {
+                          const mediaType = headerComp.format.toLowerCase(); // 'image', 'video', 'document'
+                          sendComponents.push({
+                              type: 'header',
+                              parameters: [{ type: mediaType, [mediaType]: { id: mediaId } }]
+                          });
+                          console.log(`[Meta API] Injecting ${mediaType} header (media_id: ${mediaId}) for paid template send.`);
+                      } else {
+                          console.warn(`[Meta API] Template "${templateName}" has a media header but no valid media_id stored — omitting header component.`);
+                      }
                   }
-              ];
+              }
+
+              sendComponents.push({
+                  type: "body",
+                  parameters: templateParams ? templateParams.map(text => ({ type: "text", text })) : defaultParams
+              });
+
+              payload.template.components = sendComponents;
           }
 
           // If review request, append the full URL proxy to the body parameters instead of a button

@@ -51,14 +51,18 @@ export const syncTemplates = async (req: Request, res: Response) => {
             await Template.findOneAndUpdate(
                 { meta_template_id: t.id, business_id: business._id },
                 {
-                    meta_template_id: t.id,
-                    name: t.name,
-                    language: t.language,
-                    category: t.category,
-                    status: t.status,
-                    components: t.components,
-                    rejected_reason: t.rejected_reason,
-                    business_id: business._id
+                    $set: {
+                        meta_template_id: t.id,
+                        name: t.name,
+                        language: t.language,
+                        category: t.category,
+                        status: t.status,
+                        components: t.components,
+                        rejected_reason: t.rejected_reason,
+                        business_id: business._id
+                    }
+                    // NOTE: We deliberately don't overwrite media_id / media_uploaded_at
+                    // because Meta doesn't return those in sync — they're stored locally only.
                 },
                 { upsert: true, new: true }
             );

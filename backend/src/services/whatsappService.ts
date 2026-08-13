@@ -73,11 +73,13 @@ export const sendWhatsAppMessage = async (phone: string, name: string, service_t
           readableTemplateText = `Greetings ${name}, your appointment at Dr. Saachi Shingrani's Dental Care has been updated to ${templateParams?.[1]} at ${templateParams?.[2]} for ${templateParams?.[3] || service_type}. The previous time slot is now cancelled. Looking forward to seeing you! 😊`;
       } else if (templateName) {
           // ── DYNAMIC TEMPLATE LOOKUP ──────────────────────────────────────────────
-          // Template is not a hardcoded system template — look it up from our DB
+          // Look up by name only — don't filter by status so broadcast works even
+          // when the DB status hasn't been updated yet by the webhook.
           try {
-              const dbTemplate = await Template.findOne({ name: templateName, status: 'APPROVED' });
+              const dbTemplate = await Template.findOne({ name: templateName });
               if (dbTemplate) {
                   const bodyComp = dbTemplate.components.find((c: any) => c.type === 'BODY');
+                  const hasButtons = dbTemplate.components.some((c: any) => c.type === 'BUTTONS');
                   if (bodyComp?.text) {
                       // Count variables in template: {{1}}, {{2}}, etc.
                       const varMatches = bodyComp.text.match(/\{\{\d+\}\}/g) || [];
@@ -95,8 +97,9 @@ export const sendWhatsAppMessage = async (phone: string, name: string, service_t
                       });
                       // Unescape \n stored by Meta as literal \n
                       readableTemplateText = reconstructed.replace(/\\n/g, '\n');
-                      // Attach media_id to freeFormPayload data so interceptor can send image
+                      // Attach dbTemplate to payload; also flag if it has buttons
                       (payload as any).__dbTemplate = dbTemplate;
+                      (payload as any).__hasButtons = hasButtons;
                   }
               }
           } catch (lookupErr) {
@@ -109,7 +112,13 @@ export const sendWhatsAppMessage = async (phone: string, name: string, service_t
       let freeFormPayload: any = null;
 
       if ((windowIsOpen || templateName === 'auto_reply_hello') && templateName && readableTemplateText) {
-           overrideToFreeForm = true;
+           // If the template has buttons, skip the interceptor — buttons ONLY work with paid template sends.
+           // Free-form messages cannot carry button components, so we preserve them by sending the paid template.
+           const hasButtons = (payload as any).__hasButtons;
+           if (hasButtons) {
+               console.log(`[Meta API] Smart Routing: Skipping interception for ${templateName} — template has buttons, sending as paid template.`);
+           } else {
+               overrideToFreeForm = true;
            // Check if the custom DB template has a valid, non-expired media_id
            const dbTemplate = (payload as any).__dbTemplate;
            const isMediaExpired = dbTemplate?.media_uploaded_at
@@ -131,6 +140,7 @@ export const sendWhatsAppMessage = async (phone: string, name: string, service_t
                    type: 'text',
                    text: { body: readableTemplateText }
                };
+           }
            }
       }
 

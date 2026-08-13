@@ -26,6 +26,26 @@ const countVariables = (text: string) => {
     return matches ? [...new Set(matches)].length : 0;
 };
 
+const PRESETS = {
+    none: {
+        name: '', category: 'UTILITY', language: 'en',
+        header: { type: 'NONE', text: '' },
+        body_text: '', footer_text: '', buttons: []
+    },
+    appointment_confirmation: {
+        name: 'appointment_confirmation', category: 'UTILITY', language: 'en',
+        header: { type: 'NONE', text: '' },
+        body_text: "Greetings *{{1}}*, your appointment at Dr. Saachi Shingrani's Dental Care is confirmed for *{{2}}* at *{{3}}* for your *{{4}}* session.\n\nWe look forward to welcoming you and ensuring you have a comfortable visit😄\n\nFor reschedules & cancellations contact the clinic",
+        footer_text: '', buttons: []
+    },
+    review_request: {
+        name: 'review_request', category: 'MARKETING', language: 'en',
+        header: { type: 'TEXT', text: 'Share your experience!' },
+        body_text: "Greetings *{{1}}*, thank you for visiting Dr. Saachi Shingrani's Dental Care today for your *{{2}}*! Could you please take a moment to leave us a quick review:\n{{3}}\n\nThanks!",
+        footer_text: '', buttons: []
+    }
+};
+
 export default function TemplatesPage() {
     const [templates, setTemplates]         = useState<any[]>([]);
     const [loading, setLoading]             = useState(true);
@@ -295,6 +315,22 @@ export default function TemplatesPage() {
                         </div>
 
                         <form onSubmit={handleCreate} className="p-6 space-y-6">
+                            {/* Presets */}
+                            <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-lg p-4">
+                                <label className="block text-xs font-bold text-blue-800 dark:text-blue-300 uppercase tracking-wider mb-2">Load a Preset (Optional)</label>
+                                <select 
+                                    className={`${inputCls} border-blue-200 dark:border-blue-800 focus:border-blue-500`}
+                                    onChange={e => {
+                                        const p = PRESETS[e.target.value as keyof typeof PRESETS];
+                                        if (p) setForm(p);
+                                    }}
+                                >
+                                    <option value="none">-- Start from scratch --</option>
+                                    <option value="appointment_confirmation">Appointment Confirmation</option>
+                                    <option value="review_request">Review Request</option>
+                                </select>
+                            </div>
+
                             {/* Basics */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>

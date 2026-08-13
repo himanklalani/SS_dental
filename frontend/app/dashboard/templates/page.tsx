@@ -97,6 +97,11 @@ export default function TemplatesPage() {
             showToast('Template name and body text are required', 'error');
             return;
         }
+
+        if (/\{\{\d+\}\}\s*$/.test(form.body_text)) {
+            showToast('Message body cannot end with a variable. Please add punctuation or text after it.', 'error');
+            return;
+        }
         
         const currentSamples = form.variableSamples.slice(0, varCount);
         if (varCount > 0 && (currentSamples.length < varCount || currentSamples.some(s => !s.trim()))) {

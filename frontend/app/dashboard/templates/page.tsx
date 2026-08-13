@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { getTemplates, createTemplate, deleteTemplate, syncTemplates } from '../../lib/api';
+import { getTemplates, createTemplate, deleteTemplate, syncTemplates, uploadTemplateSample } from '../../lib/api';
 import { RefreshCw, Plus, Trash2, CheckCircle, Clock, XCircle, AlertTriangle, FileText, X, ChevronDown, Image as ImageIcon, Video, File as FileIcon, Type, Link as LinkIcon, Phone } from 'lucide-react';
 
 const inputCls = "w-full bg-neutral-100 dark:bg-neutral-950 border border-neutral-300 dark:border-neutral-800 rounded p-3 text-neutral-900 dark:text-white focus:border-neutral-900 dark:focus:border-white outline-none transition-colors text-sm";
@@ -46,12 +46,14 @@ export default function TemplatesPage() {
     const [toast, setToast]                 = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
     const [filterStatus, setFilterStatus]   = useState('');
     const [expandedId, setExpandedId]       = useState<string | null>(null);
+    const [uploading, setUploading]           = useState(false);
+    const [sampleFile, setSampleFile]           = useState<File | null>(null);
 
     const [form, setForm] = useState({
         name:      '',
         category:  'UTILITY',
         language:  'en',
-        header:    { type: 'NONE', text: '' },
+        header:    { type: 'NONE', text: '', handle: '' },
         body_text: '',
         variableSamples: [] as string[],
         footer_text: '',
@@ -111,11 +113,34 @@ export default function TemplatesPage() {
 
         setSubmitting(true);
         try {
+            let headerHandle = '';
+
+            // If media header selected, upload the sample file first
+            if (['IMAGE', 'VIDEO', 'DOCUMENT'].includes(form.header.type)) {
+                if (!sampleFile) {
+                    showToast('Please attach a sample file for the media header', 'error');
+                    setSubmitting(false);
+                    return;
+                }
+                setUploading(true);
+                try {
+                    const result = await uploadTemplateSample(sampleFile);
+                    headerHandle = result.handle;
+                } catch {
+                    showToast('Failed to upload sample media to Meta. Check META_APP_ID env var.', 'error');
+                    setSubmitting(false);
+                    setUploading(false);
+                    return;
+                } finally {
+                    setUploading(false);
+                }
+            }
+
             const payload = {
                 name: form.name,
                 category: form.category,
                 language: form.language,
-                header: form.header,
+                header: { ...form.header, handle: headerHandle },
                 body_text: form.body_text,
                 variable_samples: varCount > 0 ? currentSamples : undefined,
                 footer_text: form.footer_text,
@@ -124,7 +149,8 @@ export default function TemplatesPage() {
             const created = await createTemplate(payload);
             setTemplates(prev => [created, ...prev]);
             setShowModal(false);
-            setForm({ name: '', category: 'UTILITY', language: 'en', header: { type: 'NONE', text: '' }, body_text: '', variableSamples: [], footer_text: '', buttons: [] });
+            setForm({ name: '', category: 'UTILITY', language: 'en', header: { type: 'NONE', text: '', handle: '' }, body_text: '', variableSamples: [], footer_text: '', buttons: [] });
+            setSampleFile(null);
             showToast('Template submitted to Meta for approval!');
         } catch (e: any) {
             console.error('Template submission error:', e?.response?.data);
@@ -360,10 +386,25 @@ export default function TemplatesPage() {
                                     ))}
                                 </div>
                                 {form.header.type === 'TEXT' && (
-                                    <input type="text" className={inputCls} placeholder="Header text (max 60 chars)" value={form.header.text} maxLength={60} onChange={e => setForm(f => ({ ...f, header: { type: 'TEXT', text: e.target.value } }))} />
+                                    <input type="text" className={inputCls} placeholder="Header text (max 60 chars)" value={form.header.text} maxLength={60} onChange={e => setForm(f => ({ ...f, header: { ...f.header, text: e.target.value } }))} />
                                 )}
                                 {['IMAGE', 'VIDEO', 'DOCUMENT'].includes(form.header.type) && (
-                                    <p className="text-xs text-neutral-500">A media header will be added. You will attach the actual file when sending the message.</p>
+                                    <div className="mt-2">
+                                        <label className="block text-xs font-semibold text-neutral-500 mb-2">Sample File <span className="text-red-500">*</span> (Required by Meta for review)</label>
+                                        <label className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-neutral-300 dark:border-neutral-700 rounded-lg p-4 cursor-pointer hover:border-blue-500 transition-colors">
+                                            <input
+                                                type="file"
+                                                className="hidden"
+                                                accept={form.header.type === 'IMAGE' ? 'image/*' : form.header.type === 'VIDEO' ? 'video/*' : '.pdf,.doc,.docx'}
+                                                onChange={e => setSampleFile(e.target.files?.[0] || null)}
+                                            />
+                                            {sampleFile ? (
+                                                <span className="text-xs font-medium text-green-600 dark:text-green-400">✓ {sampleFile.name}</span>
+                                            ) : (
+                                                <span className="text-xs text-neutral-400">Click to upload a sample {form.header.type.toLowerCase()} for Meta review</span>
+                                            )}
+                                        </label>
+                                    </div>
                                 )}
                             </div>
 

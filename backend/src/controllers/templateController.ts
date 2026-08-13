@@ -5,6 +5,7 @@ import Business from '../models/Business';
 
 const META_API_TOKEN = process.env.META_API_TOKEN;
 const META_WABA_ID   = process.env.META_WABA_ID; // WhatsApp Business Account ID
+const META_APP_ID    = process.env.META_APP_ID;  // Meta App ID (for media uploads)
 
 // ── Helper: get first business ───────────────────────────────────────────────
 const getDefaultBusiness = async () => Business.findOne();
@@ -98,7 +99,11 @@ export const createTemplate = async (req: Request, res: Response) => {
             if (header.type === 'TEXT' && header.text) {
                 components.push({ type: 'HEADER', format: 'TEXT', text: header.text });
             } else if (['IMAGE', 'VIDEO', 'DOCUMENT'].includes(header.type)) {
-                components.push({ type: 'HEADER', format: header.type });
+                const headerComp: any = { type: 'HEADER', format: header.type };
+                if (header.handle) {
+                    headerComp.example = { header_handle: [header.handle] };
+                }
+                components.push(headerComp);
             }
         }
 
@@ -167,6 +172,64 @@ export const createTemplate = async (req: Request, res: Response) => {
     }
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// @desc   Upload a media sample to Meta and return the header_handle
+// @route  POST /api/templates/upload-sample
+// ─────────────────────────────────────────────────────────────────────────────
+export const uploadSample = async (req: Request, res: Response) => {
+    try {
+        if (!META_API_TOKEN || !META_APP_ID) {
+            return res.status(500).json({ error: 'META_API_TOKEN or META_APP_ID env variable is not set' });
+        }
+
+        const file = (req as any).file;
+        if (!file) return res.status(400).json({ error: 'No file uploaded' });
+
+        const mimeType = file.mimetype;
+        const fileSize = file.size;
+        const fileName = file.originalname;
+
+        // Step 1: Create an upload session with Meta
+        const sessionRes = await axios.post(
+            `https://graph.facebook.com/v25.0/${META_APP_ID}/uploads`,
+            null,
+            {
+                params: {
+                    file_name:    fileName,
+                    file_length:  fileSize,
+                    file_type:    mimeType,
+                    access_token: META_API_TOKEN
+                }
+            }
+        );
+
+        const sessionId = sessionRes.data.id;
+        if (!sessionId) return res.status(500).json({ error: 'Failed to create Meta upload session' });
+
+        // Step 2: Upload the file buffer to that session
+        const uploadRes = await axios.post(
+            `https://graph.facebook.com/v25.0/${sessionId}`,
+            file.buffer,
+            {
+                headers: {
+                    Authorization: `OAuth ${META_API_TOKEN}`,
+                    'Content-Type': mimeType,
+                    'file_offset':  '0'
+                }
+            }
+        );
+
+        const handle = uploadRes.data.h;
+        if (!handle) return res.status(500).json({ error: 'Meta did not return a handle' });
+
+        console.log(`[Templates] Media sample uploaded. Handle: ${handle}`);
+        res.json({ handle });
+
+    } catch (error: any) {
+        console.error('[Templates] Upload sample error:', error.response?.data || error.message);
+        res.status(500).json({ error: 'Failed to upload media sample', details: error.response?.data });
+    }
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // @desc   Delete a template from Meta and local DB

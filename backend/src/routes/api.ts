@@ -56,7 +56,8 @@ import { sendBroadcast } from '../controllers/broadcastController';
 router.post('/broadcast/send', sendBroadcast);
 
 // Templates
-import { getTemplates, createTemplate, deleteTemplate, syncTemplates } from '../controllers/templateController';
+import { getTemplates, createTemplate, deleteTemplate, syncTemplates, uploadSample } from '../controllers/templateController';
+router.post('/templates/upload-sample', upload.single('file'), uploadSample);
 router.get('/templates', getTemplates);
 router.post('/templates', createTemplate);
 router.post('/templates/sync', syncTemplates);

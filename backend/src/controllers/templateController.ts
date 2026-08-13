@@ -307,9 +307,12 @@ export const deleteTemplate = async (req: Request, res: Response) => {
 // @desc   Handle incoming Meta webhook for template status updates
 //         Called internally from reviewController webhook handler
 // ─────────────────────────────────────────────────────────────────────────────
-export const handleTemplateStatusUpdate = async (event: any) => {
+export const handleTemplateStatusUpdate = async (eventPayload: any) => {
     try {
-        const { message_template_id, message_template_name, message_template_status, reason } = event;
+        const { message_template_id, message_template_name, event, reason } = eventPayload;
+        
+        // Meta sends the status in the 'event' field (e.g. 'APPROVED', 'REJECTED')
+        const message_template_status = event;
 
         const updated = await Template.findOneAndUpdate(
             { meta_template_id: String(message_template_id) },

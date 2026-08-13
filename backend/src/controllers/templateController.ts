@@ -2,10 +2,11 @@ import { Request, Response } from 'express';
 import axios from 'axios';
 import Template from '../models/Template';
 import Business from '../models/Business';
+import FormData from 'form-data';
 
 const META_API_TOKEN = process.env.META_API_TOKEN;
 const META_WABA_ID   = process.env.META_WABA_ID; // WhatsApp Business Account ID
-const META_APP_ID    = process.env.META_APP_ID;  // Meta App ID (for media uploads)
+const META_PHONE_NUMBER_ID = process.env.META_PHONE_NUMBER_ID; // WhatsApp Phone ID
 
 // ── Helper: get first business ───────────────────────────────────────────────
 const getDefaultBusiness = async () => Business.findOne();
@@ -178,51 +179,32 @@ export const createTemplate = async (req: Request, res: Response) => {
 // ─────────────────────────────────────────────────────────────────────────────
 export const uploadSample = async (req: Request, res: Response) => {
     try {
-        if (!META_API_TOKEN || !META_APP_ID) {
-            return res.status(500).json({ error: 'META_API_TOKEN or META_APP_ID env variable is not set' });
+        if (!META_API_TOKEN || !META_PHONE_NUMBER_ID) {
+            return res.status(500).json({ error: 'META_API_TOKEN or META_PHONE_NUMBER_ID env variable is not set' });
         }
 
         const file = (req as any).file;
         if (!file) return res.status(400).json({ error: 'No file uploaded' });
 
-        const mimeType = file.mimetype;
-        const fileSize = file.size;
-        const fileName = file.originalname;
+        const form = new FormData();
+        form.append('messaging_product', 'whatsapp');
+        form.append('file', file.buffer, { filename: file.originalname, contentType: file.mimetype });
 
-        // Step 1: Create an upload session with Meta
-        const sessionRes = await axios.post(
-            `https://graph.facebook.com/v25.0/${META_APP_ID}/uploads`,
-            null,
-            {
-                params: {
-                    file_name:    fileName,
-                    file_length:  fileSize,
-                    file_type:    mimeType,
-                    access_token: META_API_TOKEN
-                }
-            }
-        );
-
-        const sessionId = sessionRes.data.id;
-        if (!sessionId) return res.status(500).json({ error: 'Failed to create Meta upload session' });
-
-        // Step 2: Upload the file buffer to that session
         const uploadRes = await axios.post(
-            `https://graph.facebook.com/v25.0/${sessionId}`,
-            file.buffer,
+            `https://graph.facebook.com/v25.0/${META_PHONE_NUMBER_ID}/media`,
+            form,
             {
                 headers: {
-                    Authorization: `OAuth ${META_API_TOKEN}`,
-                    'Content-Type': mimeType,
-                    'file_offset':  '0'
+                    ...form.getHeaders(),
+                    Authorization: `Bearer ${META_API_TOKEN}`
                 }
             }
         );
 
-        const handle = uploadRes.data.h;
-        if (!handle) return res.status(500).json({ error: 'Meta did not return a handle' });
+        const handle = uploadRes.data.id;
+        if (!handle) return res.status(500).json({ error: 'Meta did not return a media ID' });
 
-        console.log(`[Templates] Media sample uploaded. Handle: ${handle}`);
+        console.log(`[Templates] Media sample uploaded to phone ID. Media ID: ${handle}`);
         res.json({ handle });
 
     } catch (error: any) {

@@ -138,6 +138,7 @@ export const createTemplate = async (req: Request, res: Response) => {
         }
 
         const url = `https://graph.facebook.com/v25.0/${META_WABA_ID}/message_templates`;
+        console.log('[Templates] Sending components to Meta:', JSON.stringify(components, null, 2));
         const metaResponse = await axios.post(url, {
             name: name.toLowerCase().replace(/\s+/g, '_'),
             category,
